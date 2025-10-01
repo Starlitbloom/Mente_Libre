@@ -3,6 +3,7 @@ package com.mentelibre.auth_service.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -35,7 +36,8 @@ public class SecurityConfig {
                     "/api/v1/roles",
                     "/api/v1/auth/login"
                 ).permitAll()
-                .requestMatchers("/api/v1/users").hasRole("ADMINISTRADOR") // Solo ADMINISTRADOR puede acceder a /api/v1/users
+                .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll() // permite crear primer usuario
+                .requestMatchers("/api/v1/users").hasRole("ADMINISTRADOR") // solo ADMINISTRADOR para listar, actualizar, eliminar
                 .anyRequest().authenticated() // El resto de rutas requieren autenticación
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)); // No se crean sesiones, cada solicitud debe ser autenticada

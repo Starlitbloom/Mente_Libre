@@ -46,7 +46,7 @@ public class RolService {
         Rol rol = rolRepository.findById(id)
         .orElseThrow(()-> new RuntimeException("Rol no encontrado Id: "+ id));
         
-        if (id == 1 || id == 2 || id == 3) {
+        if (id == 1 || id == 2 ) {
             throw new RuntimeException("No se puede eliminar este rol base del sistema");    
         }
 

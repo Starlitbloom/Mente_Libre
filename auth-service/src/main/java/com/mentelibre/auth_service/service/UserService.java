@@ -56,11 +56,20 @@ public class UserService implements UserDetailsService{
         );
     }
     
+    // En UserService
+    public User obtenerUserPorUsername(String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new RuntimeException("Usuario no encontrado: " + username);
+        }
+        return user;
+    }
+
     public String eliminarUser(Long id){
         User user = userRepository.findById(id)
         .orElseThrow(()-> new RuntimeException("Usuario no encontrado Id: "+ id));
        
-        if (id == 1 || id == 2 || id == 3) {
+        if (id == 1) {
             throw new RuntimeException("No se puede eliminar este usuario base del sistema");    
         }
         userRepository.delete(user);

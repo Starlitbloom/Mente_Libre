@@ -182,10 +182,8 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
         }
 
-        // Si ya hay usuarios, verificar autenticación y rol
+        // Validar autenticación y rol
         var auth = SecurityContextHolder.getContext().getAuthentication();
-
-        // Aquí está el cambio clave: validar que haya token válido y rol correcto
         if (auth == null || !auth.isAuthenticated() || auth.getAuthorities() == null ||
             auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No autorizado para crear usuarios");
@@ -195,6 +193,7 @@ public class AuthController {
         User nuevo = userService.crearUser(user.getUsername(), user.getEmail(), user.getPassword(), user.getRol().getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }
+
 
     // Endpoint para crear un rol nuevo
     @Operation(summary = "Crear nuevo rol", description = "Registra un nuevo rol.")
@@ -208,9 +207,25 @@ public class AuthController {
         description = "Error en los datos enviados",
         content = @Content(schema = @Schema(implementation = Rol.class))
     )
+    //@PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping("/roles")
     public ResponseEntity<?> crearRol(@RequestBody Rol role) {
+
         try {
+            // Si no hay roles en la base, crear libremente
+            if (rolService.obtenerRoles().isEmpty()) {
+                Rol nuevo = rolService.crearRol(role);
+                return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
+            }
+
+            // Si ya hay roles, verificar token y rol administrador
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated() || auth.getAuthorities() == null ||
+                auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No autorizado para crear roles");
+            }
+
+            // Crear rol normalmente
             Rol nuevo = rolService.crearRol(role);
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevo); 
         } catch (RuntimeException e) {
@@ -236,24 +251,40 @@ public class AuthController {
         String username = loginData.get("username");
         String password = loginData.get("password");
 
+        if (username == null || password == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Faltan datos: username o password");
+        }
+
         try {
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
             );
 
+            // Cargar detalles de usuario
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             String jwt = jwtUtil.generateToken(userDetails);
+
+            // Buscar usuario en la DB
+            User user = userService.obtenerUserPorUsername(username);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no encontrado");
+            }
+
+            // Asegurarnos de que tenga rol
+            String roleNombre = user.getRol() != null ? user.getRol().getNombre() : "SIN_ROL";
 
             Map<String, String> response = new HashMap<>();
             response.put("token", jwt);
             response.put("username", username);
-            User user = userService.userRepository.findByUsername(username);
-            response.put("role", user.getRol().getNombre());
+            response.put("role", roleNombre);
+
             return ResponseEntity.ok(response);
+
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciales incorrectas");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error en autenticación");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body("Error en autenticación: " + e.getMessage());
         }
     }
     // Endpoint para actualizar a los usuarios
