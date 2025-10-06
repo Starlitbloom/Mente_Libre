@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -28,6 +29,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor // Constructor sin argumentos
 @AllArgsConstructor // Constructor con todos los argumentos
 
+@Schema(description = "Usuario del sistema con credenciales y rol asignado")
 public class User {
     @Id // Identificador clave primaria
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Generacion automatica del ID

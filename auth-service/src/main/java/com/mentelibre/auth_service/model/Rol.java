@@ -8,6 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,6 +29,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor // Constructor vacio
 @AllArgsConstructor // Constructor con todos los datos
 
+@Schema(description = "Rol de usuario, define permisos y acceso en el sistema")
 public class Rol {
     @Id // Identificador clave primaria
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Autoincrementable en la base de datos
