@@ -5,7 +5,6 @@ import com.mentelibre.notification_service.service.NotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -104,6 +103,7 @@ class NotificationControllerTest {
     @Test
     void testUpdateNotificationFound() throws Exception {
         Notification updated = new Notification(1L, "ALERTA", "Mensaje actualizado", 5L, true, null, null);
+
         when(notificationService.getNotificationById(1L)).thenReturn(Optional.of(notification1));
         when(notificationService.saveNotification(any(Notification.class))).thenReturn(updated);
 
@@ -120,6 +120,7 @@ class NotificationControllerTest {
     @Test
     void testUpdateNotificationNotFound() throws Exception {
         Notification updated = new Notification(99L, "ALERTA", "Mensaje actualizado", 5L, true, null, null);
+
         when(notificationService.getNotificationById(99L)).thenReturn(Optional.empty());
 
         mockMvc.perform(put("/api/notifications/99")
@@ -134,6 +135,7 @@ class NotificationControllerTest {
     @Test
     void testMarkAsSentFound() throws Exception {
         Notification sent = new Notification(1L, "RECORDATORIO", "Mensaje 1", 5L, true, null, null);
+
         when(notificationService.markAsSent(1L)).thenReturn(Optional.of(sent));
 
         mockMvc.perform(patch("/api/notifications/1/sent"))

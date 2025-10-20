@@ -74,6 +74,7 @@ class NotificationRuleServiceTest {
         Optional<NotificationRule> result = ruleService.setRuleActiveStatus(1L, true);
         assertTrue(result.isPresent());
         assertTrue(result.get().isActive());
+
         verify(ruleRepository, times(1)).findById(1L);
         verify(ruleRepository, times(1)).save(r);
     }
