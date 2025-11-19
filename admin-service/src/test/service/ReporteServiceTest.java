@@ -5,7 +5,6 @@ import com.mentelibre.admin_service.repository.ReporteGeneralRepository;
 import com.mentelibre.admin_service.repository.UserAdminRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.Map;
@@ -21,15 +20,17 @@ class ReporteServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Crear mocks
         userAdminRepository = mock(UserAdminRepository.class);
         reporteGeneralRepository = mock(ReporteGeneralRepository.class);
-        reporteService = new ReporteService();
-        reporteService.userAdminRepository = userAdminRepository;
-        reporteService.reporteGeneralRepository = reporteGeneralRepository;
+
+        // Inyectar mocks mediante el constructor
+        reporteService = new ReporteService(userAdminRepository, reporteGeneralRepository);
     }
 
     @Test
     void testGenerarReporte() {
+        // Configurar comportamiento de los mocks
         when(userAdminRepository.count()).thenReturn(10L);
         when(userAdminRepository.countByBloqueadoTrue()).thenReturn(2);
 
@@ -41,8 +42,10 @@ class ReporteServiceTest {
 
         when(reporteGeneralRepository.save(any(ReporteGeneral.class))).thenReturn(esperado);
 
+        // Ejecutar método a testear
         ReporteGeneral result = reporteService.generarReporte();
 
+        // Verificaciones
         assertEquals(10, result.getTotalUsuarios());
         assertEquals(2, result.getUsuariosBloqueados());
         assertTrue(result.getObjetivosPorServicio().containsKey("Goals Service"));

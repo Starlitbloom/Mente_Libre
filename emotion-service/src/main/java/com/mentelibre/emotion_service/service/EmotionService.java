@@ -3,6 +3,8 @@ package com.mentelibre.emotion_service.service;
 import com.mentelibre.emotion_service.model.Emotion;
 import com.mentelibre.emotion_service.dto.EmotionSummaryDTO;
 import com.mentelibre.emotion_service.repository.EmotionRepository;
+import com.mentelibre.emotion_service.webclient.AuthClient;
+
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -13,15 +15,24 @@ import java.util.stream.Collectors;
 public class EmotionService {
 
     private final EmotionRepository emotionRepository;
+    private final AuthClient authClient;
 
-    public EmotionService(EmotionRepository emotionRepository) {
-        this.emotionRepository = emotionRepository;
-    }
+    public EmotionService(EmotionRepository emotionRepository, AuthClient authClient) {
+            this.emotionRepository = emotionRepository;
+            this.authClient = authClient;
+        }
 
-    public Emotion crearEmotion(Emotion e) {
+
+        public Emotion crearEmotion(Emotion e) {
+
+        if (!authClient.existeUsuario(e.getUserId())) {
+            throw new RuntimeException("El usuario no existe en Auth Service.");
+        }
+
         e.setFechaRegistro(LocalDateTime.now());
         return emotionRepository.save(e);
     }
+
 
     public List<Emotion> obtenerEmotionsPorUsuario(Long userId) {
         return emotionRepository.findByUserId(userId);
@@ -51,4 +62,9 @@ public class EmotionService {
                 .sorted(Comparator.comparing(EmotionSummaryDTO::getFecha))
                 .collect(Collectors.toList());
     }
+
+    public List<Emotion> obtenerTodas() {
+        return emotionRepository.findAll();
+    }
+
 }

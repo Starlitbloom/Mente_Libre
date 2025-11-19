@@ -3,11 +3,11 @@ package com.mentelibre.admin_service.controller;
 import com.mentelibre.admin_service.model.Rol;
 import com.mentelibre.admin_service.model.UserAdmin;
 import com.mentelibre.admin_service.service.UserAdminService;
-import com.mentelibre.admin_service.config.JwtRequestFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -19,7 +19,10 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(UserAdminController.class)
+@WebMvcTest(
+    controllers = UserAdminController.class,
+    excludeAutoConfiguration = {SecurityAutoConfiguration.class} // deshabilita seguridad
+)
 class UserAdminControllerTest {
 
     @Autowired
@@ -27,9 +30,6 @@ class UserAdminControllerTest {
 
     @MockBean
     private UserAdminService userAdminService;
-
-    @MockBean
-    private JwtRequestFilter jwtRequestFilter;
 
     @Autowired
     private ObjectMapper objectMapper;

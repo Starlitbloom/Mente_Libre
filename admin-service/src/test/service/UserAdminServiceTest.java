@@ -26,9 +26,9 @@ class UserAdminServiceTest {
     void setUp() {
         userAdminRepository = mock(UserAdminRepository.class);
         rolRepository = mock(RolRepository.class);
-        userAdminService = new UserAdminService();
-        userAdminService.userAdminRepository = userAdminRepository;
-        userAdminService.rolRepository = rolRepository;
+
+        // Inyección de mocks por constructor
+        userAdminService = new UserAdminService(userAdminRepository, rolRepository);
 
         rol = new Rol(1L, "ADMIN", null, null, null);
         user = new UserAdmin(1L, "usuario1", "user@mail.com", false, rol, null, null);

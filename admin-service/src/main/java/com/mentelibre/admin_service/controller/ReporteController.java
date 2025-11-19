@@ -17,10 +17,12 @@ public class ReporteController {
 
     // Generar y guardar reporte general
     @PostMapping("/generar")
-    //@PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ReporteGeneral> generarReporte() {
-        return ResponseEntity.ok(reporteService.generarReporte());
+    public ResponseEntity<ReporteGeneral> generarReporte(
+            @RequestHeader("Authorization") String token) {
+
+        return ResponseEntity.ok(reporteService.generarReporte(token));
     }
+
 
     // Listar todos los reportes históricos
     @GetMapping

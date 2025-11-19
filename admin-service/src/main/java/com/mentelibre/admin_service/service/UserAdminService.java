@@ -13,23 +13,24 @@ import java.util.Optional;
 @Service
 public class UserAdminService {
 
-    @Autowired
-    private UserAdminRepository userAdminRepository;
+    private final UserAdminRepository userAdminRepository;
+    private final RolRepository rolRepository;
 
     @Autowired
-    private RolRepository rolRepository;
+    public UserAdminService(UserAdminRepository userAdminRepository,
+                            RolRepository rolRepository) {
+        this.userAdminRepository = userAdminRepository;
+        this.rolRepository = rolRepository;
+    }
 
-    // Listar todos los usuarios
     public List<UserAdmin> listarUsuarios() {
         return userAdminRepository.findAll();
     }
 
-    // Buscar usuario por ID
     public Optional<UserAdmin> buscarUsuarioPorId(Long id) {
         return userAdminRepository.findById(id);
     }
 
-    // Bloquear usuario
     public UserAdmin bloquearUsuario(Long id) {
         UserAdmin usuario = userAdminRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -37,7 +38,6 @@ public class UserAdminService {
         return userAdminRepository.save(usuario);
     }
 
-    // Desbloquear usuario
     public UserAdmin desbloquearUsuario(Long id) {
         UserAdmin usuario = userAdminRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -45,7 +45,6 @@ public class UserAdminService {
         return userAdminRepository.save(usuario);
     }
 
-    // Eliminar usuario
     public void eliminarUsuario(Long id) {
         if (!userAdminRepository.existsById(id)) {
             throw new RuntimeException("Usuario no encontrado");
@@ -53,7 +52,6 @@ public class UserAdminService {
         userAdminRepository.deleteById(id);
     }
 
-    // Asignar rol a usuario
     public UserAdmin asignarRol(Long idUsuario, Long idRol) {
         UserAdmin usuario = userAdminRepository.findById(idUsuario)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));

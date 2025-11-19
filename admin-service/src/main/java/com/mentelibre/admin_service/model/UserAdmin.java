@@ -38,7 +38,7 @@ public class UserAdmin {
     private String email;
 
     @Column(nullable = false)
-    private boolean bloqueado = false;
+    private Boolean bloqueado = false;
 
     @ManyToOne
     @JoinColumn(name = "rol_id")

@@ -11,30 +11,29 @@ import java.util.Optional;
 @Service
 public class RolService {
 
-    @Autowired
-    private RolRepository rolRepository;
+    private final RolRepository rolRepository;
 
-    // Listar todos los roles
+    @Autowired
+    public RolService(RolRepository rolRepository) {
+        this.rolRepository = rolRepository;
+    }
+
     public List<Rol> listarRoles() {
         return rolRepository.findAll();
     }
 
-    // Buscar rol por ID
     public Optional<Rol> buscarRolPorId(Long id) {
         return rolRepository.findById(id);
     }
 
-    // Buscar rol por nombre
     public Optional<Rol> buscarRolPorNombre(String nombre) {
         return rolRepository.findByNombre(nombre);
     }
 
-    // Crear nuevo rol
     public Rol crearRol(Rol rol) {
         return rolRepository.save(rol);
     }
 
-    // Eliminar rol
     public void eliminarRol(Long id) {
         if (!rolRepository.existsById(id)) {
             throw new RuntimeException("Rol no encontrado");
@@ -42,4 +41,3 @@ public class RolService {
         rolRepository.deleteById(id);
     }
 }
-

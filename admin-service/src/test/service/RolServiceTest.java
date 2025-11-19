@@ -19,8 +19,7 @@ class RolServiceTest {
     @BeforeEach
     void setUp() {
         rolRepository = mock(RolRepository.class);
-        rolService = new RolService();
-        rolService.rolRepository = rolRepository;
+        rolService = new RolService(rolRepository); // inyección por constructor
     }
 
     @Test
