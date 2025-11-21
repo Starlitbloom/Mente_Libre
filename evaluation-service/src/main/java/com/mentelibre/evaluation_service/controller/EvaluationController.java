@@ -15,6 +15,7 @@ import com.mentelibre.evaluation_service.model.Evaluation;
 import com.mentelibre.evaluation_service.model.EvaluationResult;
 import com.mentelibre.evaluation_service.model.Question;
 import com.mentelibre.evaluation_service.service.EvaluationService;
+import com.mentelibre.evaluation_service.webclient.EmotionClient;
 
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
@@ -24,6 +25,10 @@ public class EvaluationController {
 
     @Autowired
     private EvaluationService evaluationService;
+
+    @Autowired
+    private EmotionClient emotionClient;
+
 
     // ------------------- EVALUATION -------------------
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -147,4 +152,17 @@ public class EvaluationController {
 
         return ResponseEntity.ok(respuestas);
     }
+
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR','CLIENTE')")
+    @GetMapping("/user/{userId}/emotions/summary")
+    public ResponseEntity<?> obtenerResumenEmociones(@PathVariable Long userId,
+                                                    @RequestHeader("Authorization") String authHeader) {
+        try {
+            Object resumen = emotionClient.obtenerResumenSemanal(userId, authHeader);
+            return ResponseEntity.ok(resumen);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
 }

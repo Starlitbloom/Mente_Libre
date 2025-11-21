@@ -1,13 +1,16 @@
 package com.mentelibre.user_service.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.mentelibre.user_service.model.UserProfile;
 import com.mentelibre.user_service.repository.UserProfileRepository;
 import com.mentelibre.user_service.webclient.AuthClient;
+import com.mentelibre.user_service.webclient.StorageClient;
 
 import jakarta.transaction.Transactional;
 
@@ -23,6 +26,9 @@ public class UserProfileService {
 
     @Autowired
     private AuthClient authClient;
+
+    @Autowired
+    private StorageClient storageClient;
 
     // Crear perfil
     public UserProfile crearPerfil(UserProfile perfil) {
@@ -148,4 +154,23 @@ public class UserProfileService {
         return userProfileRepository.findByGeneroId(generoId);
     }
 
+    // Subir archivo para un usuario
+    public Map<String, Object> uploadUserFile(MultipartFile file, Long userId, String category, String token) {
+        return storageClient.uploadFile(file, userId, category, token);
+    }
+
+    // Listar archivos de un usuario
+    public List<Map<String, Object>> getUserFiles(Long userId, String token) {
+        return storageClient.getFilesByOwner(userId, token);
+    }
+
+    // Eliminar archivo de usuario
+    public boolean deleteUserFile(Long fileId, String token) {
+        return storageClient.deleteFile(fileId, token);
+    }
+
+    // Actualizar archivo de usuario
+    public Map<String, Object> updateUserFile(Long fileId, MultipartFile file, String token) {
+        return storageClient.updateFile(fileId, file, token);
+    }
 }

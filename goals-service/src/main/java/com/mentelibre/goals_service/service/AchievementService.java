@@ -2,34 +2,57 @@ package com.mentelibre.goals_service.service;
 
 import com.mentelibre.goals_service.model.Achievement;
 import com.mentelibre.goals_service.repository.AchievementRepository;
+import com.mentelibre.goals_service.webclient.AuthClient;
+import com.mentelibre.goals_service.webclient.NotificationClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-/**
- * Servicio para manejar la lógica de negocio relacionada con los logros (Achievements).
- * Permite crear, actualizar, eliminar y consultar logros obtenidos por metas.
- */
 @Service
 @Transactional
-public class AchievementService{
-    
+public class AchievementService {
+
     private final AchievementRepository achievementRepository;
+    private final AuthClient authClient;
+    private final NotificationClient notificationClient; // <-- inyectamos NotificationClient
 
-    public AchievementService(AchievementRepository achievementRepository) {
+    public AchievementService(AchievementRepository achievementRepository,
+                              AuthClient authClient,
+                              NotificationClient notificationClient) {
         this.achievementRepository = achievementRepository;
+        this.authClient = authClient;
+        this.notificationClient = notificationClient;
     }
 
-    /**
-     * Crea un nuevo logro.
-     * @param achievement Objeto Achievement con los datos del logro.
-     * @return Logro creado con ID generado.
-     */
-    public Achievement createAchievement(Achievement achievement) {
-        return achievementRepository.save(achievement);
+    public Achievement createAchievement(Achievement achievement, String token) {
+        // Validar usuario
+        if (!authClient.usuarioExiste(achievement.getGoal().getUserId(), token)) {
+            throw new RuntimeException("Usuario no existe");
+        }
+
+        if (!authClient.usuarioPuedeCrearGoal(token)) {
+            throw new RuntimeException("No tiene permisos para crear Achievement");
+        }
+
+        // Guardar logro
+        Achievement saved = achievementRepository.save(achievement);
+
+        // Enviar notificación al usuario
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("userId", achievement.getGoal().getUserId());
+        payload.put("message", "¡Has logrado: " + achievement.getName() + "!");
+        payload.put("type", "ACHIEVEMENT");
+
+        notificationClient.createNotification(payload);
+
+        return saved;
     }
+
+    // ... resto de métodos igual
 
     /**
      * Actualiza un logro existente.

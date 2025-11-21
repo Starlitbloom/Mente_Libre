@@ -2,6 +2,8 @@ package com.mentelibre.goals_service.controller;
 
 import com.mentelibre.goals_service.model.Achievement;
 import com.mentelibre.goals_service.service.AchievementService;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,9 +28,11 @@ public class AchievementController {
      * POST /api/achievements
      */
     @PostMapping
-    public ResponseEntity<Achievement> createAchievement(@RequestBody Achievement achievement) {
-        Achievement created = achievementService.createAchievement(achievement);
-        return ResponseEntity.ok(created);
+    public ResponseEntity<Achievement> createAchievement(
+            @RequestBody Achievement achievement,
+            @RequestHeader("Authorization") String token) {
+        Achievement saved = achievementService.createAchievement(achievement, token);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     /**

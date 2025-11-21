@@ -1,11 +1,13 @@
 package com.mentelibre.user_service.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.mentelibre.user_service.model.UserProfile;
 import com.mentelibre.user_service.service.UserProfileService;
@@ -142,6 +144,40 @@ public class UserProfileController {
             return ResponseEntity.ok(userProfileService.eliminarUserProfile(id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
+    // -------------------- ARCHIVOS --------------------
+
+    // Subir archivo de usuario
+    @PostMapping("/perfiles/{userId}/files/upload")
+    @PreAuthorize("hasRole('CLIENTE')")
+    public ResponseEntity<?> uploadFile(
+            @PathVariable Long userId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("category") String category,
+            @RequestHeader("Authorization") String token) {
+
+        try {
+            Map<String, Object> uploadedFile = userProfileService.uploadUserFile(file, userId, category, token);
+            return ResponseEntity.ok(uploadedFile);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // Listar archivos de un usuario
+    @GetMapping("/perfiles/{userId}/files")
+    @PreAuthorize("hasAnyRole('CLIENTE', 'ADMINISTRADOR')")
+    public ResponseEntity<?> listFiles(
+            @PathVariable Long userId,
+            @RequestHeader("Authorization") String token) {
+
+        try {
+            List<Map<String, Object>> files = userProfileService.getUserFiles(userId, token);
+            return ResponseEntity.ok(files);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 }

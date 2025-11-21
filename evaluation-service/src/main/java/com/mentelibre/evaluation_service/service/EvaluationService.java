@@ -1,7 +1,10 @@
 package com.mentelibre.evaluation_service.service;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +17,9 @@ import com.mentelibre.evaluation_service.repository.EvaluationRepository;
 import com.mentelibre.evaluation_service.repository.EvaluationResultRepository;
 import com.mentelibre.evaluation_service.repository.QuestionRepository;
 import com.mentelibre.evaluation_service.webclient.AuthClient;
+import com.mentelibre.evaluation_service.webclient.EmotionClient;
+import com.mentelibre.evaluation_service.webclient.NotificationClient;
+
 
 import jakarta.transaction.Transactional;
 
@@ -35,6 +41,10 @@ public class EvaluationService {
 
     @Autowired
     private AuthClient authClient; // WebClient para AuthService
+    @Autowired
+    private EmotionClient emotionClient;
+    @Autowired
+    private NotificationClient notificationClient;
 
     // ------------------- EVALUATION -------------------
     public Evaluation crearEvaluation(Evaluation evaluation, String authHeader) {
@@ -101,8 +111,22 @@ public class EvaluationService {
         }
 
         result.setFechaRealizacion(LocalDate.now());
-        return evaluationResultRepository.save(result);
-    }
+        EvaluationResult savedResult = evaluationResultRepository.save(result);
+
+        // ----------------- NOTIFICACIÓN -----------------
+        try {
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("userId", result.getUserId());
+            notification.put("message", "Has completado la evaluación: " + result.getEvaluation().getTitulo());
+            notification.put("type", "INFO");
+            notification.put("sent", false); // opcional, depende de tu servicio
+
+            notificationClient.createNotification(notification, authHeader);
+        } catch (Exception e) {
+            System.out.println("No se pudo enviar la notificación: " + e.getMessage());
+        }
+                return savedResult;
+            }
 
     public List<EvaluationResult> obtenerResultadosPorUserId(Long userId) {
         return evaluationResultRepository.findByUserId(userId);
@@ -134,4 +158,11 @@ public class EvaluationService {
     public List<Answer> obtenerRespuestasPorEvaluationResultId(Long resultId) {
         return answerRepository.findByEvaluationResultId(resultId);
     }
+
+    public Object obtenerResumenEmocionesUsuario(Long userId, String authHeader) {
+        // Llama al EmotionClient y obtiene el resumen semanal de emociones
+        return emotionClient.obtenerResumenSemanal(userId, authHeader);
+    }
+
+    
 }
