@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -16,25 +17,31 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
-public class JwtRequestFilter extends OncePerRequestFilter { // Filtro que se ejecuta una vez por cada solicitud entrante
+public class JwtRequestFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
 
-    @Autowired
-    private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+    public JwtRequestFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        String path = request.getServletPath();
-        
+        String path = request.getRequestURI();
+
+        System.out.println("PATH: " + request.getRequestURI() + " METHOD: " + request.getMethod());
+
         // Permitir rutas públicas sin JWT
-        if (path.equals("/api/v1/auth/login")) {
+        if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/users")) {
             chain.doFilter(request, response);
             return;
         }
+
+
 
         final String authHeader = request.getHeader("Authorization");
         String username = null;
@@ -57,5 +64,5 @@ public class JwtRequestFilter extends OncePerRequestFilter { // Filtro que se ej
 
         chain.doFilter(request, response);
     }
-
+    
 }

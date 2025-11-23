@@ -18,6 +18,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -36,8 +37,9 @@ public class User {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 30) // Campo obligatorio en base de datos, debe ser único y longitud max de 50 caracteres
-    @NotBlank(message = "El nombre de usuario no puede estar vacío") // Validacion para que no este vacio
-    @Size(min = 4, message = "El nombre de usuario debe tener al menos 3") // Para que el username(nombre de usuario) no sea demasiado corto
+    @NotBlank(message = "Apodo obligatorio") // Validacion para que no este vacio
+    @Pattern(regexp = "^[A-Za-zÁÉÍÓÚÑáéíóúñ ]+$", message = "Solo letras y espacios")
+    @Size(min = 4, message = "Debe tener al menos 3 caracteres") // Para que el username(nombre de usuario) no sea demasiado corto
     private String username;
 
     @Column(nullable = false, unique = true, length = 50) // Para la recuperación de contraseña y notificaciones
@@ -45,9 +47,19 @@ public class User {
     @Email(message = "Debe ingresar un correo válido") // Para una validacion con el email
     private String email;
     
+    @NotBlank(message = "Teléfono obligatorio")
+    @Size(min = 8, max = 15, message = "Debe tener entre 8 y 15 dígitos")
+    @Pattern(regexp = "\\d+", message = "Solo números")
+    @Column(nullable = false, length = 15)
+    private String phone; 
+
     @Column(nullable = false, length = 100)
-    @NotBlank(message = "La contraseña no debe estar vacía") // Para no aceptar espacio vacios
-    @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres") // Para que la contraseña no sea demasiado corta
+    @NotBlank(message = "Contraseña obligatoria") // Para no aceptar espacio vacios
+    @Size(min = 8, message = "Mínimo 8 caracteres") // Para que la contraseña no sea demasiado corta
+    @Pattern(
+        regexp = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[^A-Za-z0-9])(?!.*\\s).+$",
+        message = "Debe incluir mayúscula, minúscula, número, símbolo y sin espacios"
+    )
     private String password;
 
     @CreationTimestamp

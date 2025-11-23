@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -19,6 +20,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.mentelibre.user_service.dto.UserProfileDTO;
+import com.mentelibre.user_service.model.Genero;
 import com.mentelibre.user_service.model.UserProfile;
 import com.mentelibre.user_service.service.UserProfileService;
 
@@ -32,75 +37,87 @@ public class UserProfileControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Test // Prueba: obtener todos los perfiles
+    @Test
     void obtenerPerfiles_returnOKAndJson() throws Exception {
-        UserProfile perfil1 = new UserProfile();
-        perfil1.setId(1L);
-        perfil1.setUserId(100L);
-        perfil1.setTelefono("111111111");
+        UserProfileDTO perfil1 = new UserProfileDTO();
+        perfil1.setUsername("usuario1");
+        perfil1.setPhone("111111111");
 
-        UserProfile perfil2 = new UserProfile();
-        perfil2.setId(2L);
-        perfil2.setUserId(101L);
-        perfil2.setTelefono("222222222");
+        UserProfileDTO perfil2 = new UserProfileDTO();
+        perfil2.setUsername("usuario2");
+        perfil2.setPhone("222222222");
 
-        List<UserProfile> perfiles = Arrays.asList(perfil1, perfil2);
-        when(userProfileService.obtenerUserProfile()).thenReturn(perfiles);
+        List<UserProfileDTO> perfiles = Arrays.asList(perfil1, perfil2);
+        when(userProfileService.obtenerTodosConAuthData()).thenReturn(perfiles);
 
         mockMvc.perform(get("/api/v1/usuario_perfil/perfiles"))
-               .andExpect(status().isOk())
-               .andExpect(jsonPath("$[0].userId").value(100))
-               .andExpect(jsonPath("$[1].telefono").value("222222222"));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].username").value("usuario1"))
+            .andExpect(jsonPath("$[1].phone").value("222222222"));
     }
 
-    @Test // Prueba: crear perfil exitoso
+
+    @Test
     void crearPerfil_returnCreatedAndJson() throws Exception {
         UserProfile entrada = new UserProfile();
         entrada.setUserId(123L);
-        entrada.setTelefono("999999999");
+        entrada.setDireccion("Calle Falsa 123");
+        entrada.setFechaNacimiento(LocalDate.of(2000, 1, 1));
+        entrada.setNotificaciones(true);
+        entrada.setGenero(new Genero(1L, "FEMENINO")); // suponiendo que tienes constructor en Genero
 
         UserProfile salida = new UserProfile();
         salida.setId(1L);
         salida.setUserId(123L);
-        salida.setTelefono("999999999");
+        salida.setDireccion("Calle Falsa 123");
+        salida.setFechaNacimiento(LocalDate.of(2000, 1, 1));
+        salida.setNotificaciones(true);
+        salida.setGenero(new Genero(1L, "FEMENINO"));
 
         when(userProfileService.crearPerfil(any(UserProfile.class))).thenReturn(salida);
 
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
         mockMvc.perform(post("/api/v1/usuario_perfil/perfiles")
                 .contentType("application/json")
-                .content(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(entrada)))
-               .andExpect(status().isCreated())
-               .andExpect(jsonPath("$.id").value(1))
-               .andExpect(jsonPath("$.telefono").value("999999999"));
+                .content(mapper.writeValueAsString(entrada)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.direccion").value("Calle Falsa 123"));
     }
 
-    @Test // Prueba: obtener perfil por ID
+
+    @Test
     @WithMockUser(username = "111", roles = {"CLIENTE"})
     void obtenerPerfilPorId_returnOKAndJson() throws Exception {
         UserProfile perfil = new UserProfile();
         perfil.setId(10L);
         perfil.setUserId(111L);
-        perfil.setTelefono("123456789");
+        perfil.setDireccion("Calle Falsa 123");
+        perfil.setFechaNacimiento(LocalDate.of(2000, 1, 1));
+        perfil.setNotificaciones(true);
+        perfil.setGenero(new Genero(1L, "FEMENINO"));
 
-        when(userProfileService.obtenerUserProfilePorId(10L)).thenReturn(perfil);
+        when(userProfileService.obtenerPerfilPorId(10L)).thenReturn(perfil);
 
         mockMvc.perform(get("/api/v1/usuario_perfil/perfiles/10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.userId").value(111))
-            .andExpect(jsonPath("$.telefono").value("123456789"));
+            .andExpect(jsonPath("$.direccion").value("Calle Falsa 123"));
     }
 
-    @Test // Prueba: eliminar perfil por ID
+
+    @Test
     void eliminarPerfil_returnOKMessage() throws Exception {
-        when(userProfileService.eliminarUserProfile(7L)).thenReturn("Perfil eliminado");
+        when(userProfileService.eliminarUserProfile(7L)).thenReturn("Perfil y usuario eliminados correctamente");
 
         mockMvc.perform(delete("/api/v1/usuario_perfil/perfiles/7"))
                .andExpect(status().isOk())
-               .andExpect(jsonPath("$").value("Perfil eliminado"));
+               .andExpect(jsonPath("$").value("Perfil y usuario eliminados correctamente"));
     }
 
-
-    @Test // Prueba: crear perfil inválido
+    @Test
     void crearPerfil_datosInvalidos_returnBadRequest() throws Exception {
         UserProfile entrada = new UserProfile(); // Sin userId ni teléfono
 
@@ -114,14 +131,13 @@ public class UserProfileControllerTest {
                .andExpect(jsonPath("$").value("El ID del usuario (userId) es obligatorio"));
     }
 
-    @Test // Prueba: obtener perfil inexistente
+    @Test
     void obtenerPerfilPorId_noExiste_returnNotFound() throws Exception {
-        when(userProfileService.obtenerUserProfilePorId(99L))
-            .thenThrow(new RuntimeException("Perfil de usuario no encontrado"));
+        when(userProfileService.obtenerPerfilPorId(99L))
+            .thenThrow(new RuntimeException("Perfil no encontrado para ID: 99"));
 
         mockMvc.perform(get("/api/v1/usuario_perfil/perfiles/99"))
             .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$").value("Perfil de usuario no encontrado"));
+            .andExpect(jsonPath("$").value("Perfil no encontrado para ID: 99"));
     }
-
 }

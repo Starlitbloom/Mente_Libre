@@ -31,7 +31,7 @@ public class UserProfileServiceTest {
     @InjectMocks
     private UserProfileService userProfileService;
 
-    @Test // Caso: userId es null
+    @Test
     void crearPerfil_userIdNull_lanzaExcepcion() {
         UserProfile perfil = new UserProfile();
         perfil.setUserId(null);
@@ -43,7 +43,7 @@ public class UserProfileServiceTest {
         assertEquals("El ID del usuario (userId) es obligatorio", ex.getMessage());
     }
 
-    @Test // Caso: usuario no existe
+    @Test
     void crearPerfil_usuarioNoExiste_lanzaExcepcion() {
         UserProfile perfil = new UserProfile();
         perfil.setUserId(99L);
@@ -54,36 +54,30 @@ public class UserProfileServiceTest {
             userProfileService.crearPerfil(perfil);
         });
 
-        assertTrue(ex.getMessage().contains("El usuario con ID"));
+        assertEquals("El usuario con ID 99 no existe en el AuthService", ex.getMessage());
     }
 
-    @Test // Caso: usuario válido
+    @Test
     void crearPerfil_usuarioValido_guardaPerfil() {
-        // Crear género válido simulado
         Genero genero = new Genero();
         genero.setId(1L);
-        genero.setNombre("Femenino");
 
-        // Crear perfil
         UserProfile perfil = new UserProfile();
         perfil.setUserId(1L);
-        perfil.setTelefono("987654321");
         perfil.setGenero(genero);
 
-        // Simular respuestas de dependencias
         when(authClient.existeUsuario(1L)).thenReturn(true);
         when(generoService.existeGenero(1L)).thenReturn(true);
+        when(userProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(userProfileRepository.save(perfil)).thenReturn(perfil);
 
-        // Ejecutar servicio
         UserProfile resultado = userProfileService.crearPerfil(perfil);
 
-        // Verificar resultados
         assertEquals(perfil, resultado);
         verify(userProfileRepository, times(1)).save(perfil);
     }
 
-    @Test // Caso: obtener perfil por ID existente
+    @Test
     void obtenerPerfil_porIdExiste_devuelvePerfil() {
         UserProfile perfil = new UserProfile();
         perfil.setId(10L);
@@ -91,35 +85,37 @@ public class UserProfileServiceTest {
 
         when(userProfileRepository.findById(10L)).thenReturn(Optional.of(perfil));
 
-        UserProfile resultado = userProfileService.obtenerUserProfilePorId(10L);
+        UserProfile resultado = userProfileService.obtenerPerfilPorId(10L);
 
         assertNotNull(resultado);
         assertEquals(perfil, resultado);
     }
 
-    @Test // Caso: obtener perfil por ID inexistente
+    @Test
     void obtenerPerfil_porIdNoExiste_lanzaExcepcion() {
-        Long idNoExistente = 99L;
-        when(userProfileRepository.findById(idNoExistente)).thenReturn(Optional.empty());
+        Long id = 99L;
+        when(userProfileRepository.findById(id)).thenReturn(Optional.empty());
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            userProfileService.obtenerUserProfilePorId(idNoExistente);
+            userProfileService.obtenerPerfilPorId(id);
         });
 
-        assertEquals("Perfil de usuario no encontrado Id: " + idNoExistente, ex.getMessage());
+        assertEquals("Perfil no encontrado para ID: " + id, ex.getMessage());
     }
 
-
-    @Test // Caso: eliminar perfil existente
+    @Test
     void eliminarPerfil_existente_ejecucionExitosa() {
         Long id = 5L;
-       UserProfile perfil = new UserProfile();
+        UserProfile perfil = new UserProfile();
         perfil.setId(id);
+        perfil.setUserId(1L);
 
         when(userProfileRepository.findById(id)).thenReturn(Optional.of(perfil));
         doNothing().when(userProfileRepository).delete(perfil);
+        doNothing().when(authClient).eliminarUsuario(1L);
 
         assertDoesNotThrow(() -> userProfileService.eliminarUserProfile(id));
         verify(userProfileRepository, times(1)).delete(perfil);
+        verify(authClient, times(1)).eliminarUsuario(1L);
     }
 }

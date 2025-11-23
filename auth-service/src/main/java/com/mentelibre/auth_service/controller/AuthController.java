@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mentelibre.auth_service.config.JwtUtil;
+import com.mentelibre.auth_service.dto.RegisterUserDTO;
+import com.mentelibre.auth_service.dto.UpdateUserDTO;
 import com.mentelibre.auth_service.model.Rol;
 import com.mentelibre.auth_service.model.User;
 import com.mentelibre.auth_service.service.RolService;
@@ -107,7 +109,7 @@ public class AuthController {
         description = "Lista de usuarios no encontrado",
         content = @Content(schema = @Schema(implementation = User.class))
     )
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    //@PreAuthorize("hasRole('ADMINISTRADOR')")
     @GetMapping("/users")
     public ResponseEntity<List<User>> getUsers(){
         List<User> users = userService.obtenerUser();
@@ -134,7 +136,7 @@ public class AuthController {
         description = "Acceso denegado por falta de permisos",
         content = @Content
     )
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    //@PreAuthorize("hasRole('ADMINISTRADOR')")
     @GetMapping("/users/{id}")
     public ResponseEntity<?> obtenerUserPorId(@PathVariable Long id) {
         try {
@@ -144,6 +146,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
+
 
 
     // Endpoint para crear un usuario nuevo
@@ -165,35 +168,24 @@ public class AuthController {
     )
     //@PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping("/users")
-    public ResponseEntity<?> crearUser(@RequestBody User user) {
+    public ResponseEntity<?> crearUser(@RequestBody RegisterUserDTO userDTO) {
 
-        // Validación de campos obligatorios
-        if (user.getUsername() == null || user.getUsername().trim().isEmpty() ||
-            user.getEmail() == null || user.getEmail().trim().isEmpty() ||
-            user.getPassword() == null || user.getPassword().trim().isEmpty() ||
-            user.getRol() == null || user.getRol().getId() == null) {
+        System.out.println("Llega POST a /users: " + userDTO);
+
+        if (userDTO.getUsername() == null || userDTO.getUsername().trim().isEmpty() ||
+            userDTO.getEmail() == null || userDTO.getEmail().trim().isEmpty() ||
+            userDTO.getPassword() == null || userDTO.getPassword().trim().isEmpty() ||
+            userDTO.getPhone() == null || userDTO.getPhone().trim().isEmpty()) {
+
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Faltan datos obligatorios: username, email, password o rolId");
+                    .body("Faltan datos obligatorios");
         }
 
-        // Si no hay usuarios: crear libremente (primer uso del sistema)
-        if (userService.obtenerUser().isEmpty()) {
-            User nuevo = userService.crearUser(user.getUsername(), user.getEmail(), user.getPassword(), user.getRol().getId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
-        }
+        // por defecto asigna el rol 1 (ADMINISTRADOR)
+        User user = userService.crearUser(userDTO, 2L);
 
-        // Validar autenticación y rol
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated() || auth.getAuthorities() == null ||
-            auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No autorizado para crear usuarios");
-        }
-
-        // Crear usuario normalmente
-        User nuevo = userService.crearUser(user.getUsername(), user.getEmail(), user.getPassword(), user.getRol().getId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
-
 
     // Endpoint para crear un rol nuevo
     @Operation(summary = "Crear nuevo rol", description = "Registra un nuevo rol.")
@@ -248,24 +240,24 @@ public class AuthController {
     )
     @PostMapping("/auth/login")
     public ResponseEntity<?> autenticar(@RequestBody Map<String, String> loginData) {
-        String username = loginData.get("username");
+        String email = loginData.get("email");
         String password = loginData.get("password");
 
-        if (username == null || password == null) {
+        if (email == null || password == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Faltan datos: username o password");
         }
 
         try {
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password)
+                new UsernamePasswordAuthenticationToken(email, password)
             );
 
             // Cargar detalles de usuario
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
             String jwt = jwtUtil.generateToken(userDetails);
 
             // Buscar usuario en la DB
-            User user = userService.obtenerUserPorUsername(username);
+            User user = userService.obtenerUserPorEmail(email);
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no encontrado");
             }
@@ -275,7 +267,7 @@ public class AuthController {
 
             Map<String, String> response = new HashMap<>();
             response.put("token", jwt);
-            response.put("username", username);
+            response.put("email", email);
             response.put("role", roleNombre);
 
             return ResponseEntity.ok(response);
@@ -304,16 +296,11 @@ public class AuthController {
         description = "Acceso denegado por falta de permisos",
         content = @Content
     )
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    //@PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/users/{id}")
-    public ResponseEntity<?> actualizarUser(@PathVariable Long id, @RequestBody Map<String, Object> datos) {
+    public ResponseEntity<?> actualizarUser(@PathVariable Long id, @RequestBody UpdateUserDTO dto) {
         try {
-            String username = (String) datos.get("username");
-            String email = (String) datos.get("email");
-            String password = (String) datos.get("password");
-            Long rolId = datos.get("rolId") != null ? Long.parseLong(datos.get("rolId").toString()) : null;
-
-            User actualizado = userService.actualizarUser(id, username, email, password, rolId);
+            User actualizado = userService.actualizarUser(id, dto);
             return ResponseEntity.ok(actualizado);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
@@ -381,7 +368,7 @@ public class AuthController {
         description = "Acceso denegado por falta de permisos",
         content = @Content
     )
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    //@PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/users/{id}")
     public ResponseEntity<?> eliminarUser(@PathVariable Long id) {
         try {

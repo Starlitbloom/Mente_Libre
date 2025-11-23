@@ -1,6 +1,8 @@
 package com.mentelibre.auth_service.controller;
 
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -9,6 +11,7 @@ import java.util.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mentelibre.auth_service.config.JwtUtil;
+import com.mentelibre.auth_service.dto.RegisterUserDTO;
 import com.mentelibre.auth_service.model.Rol;
 import com.mentelibre.auth_service.model.User;
 import com.mentelibre.auth_service.repository.UserRepository;
@@ -87,19 +90,34 @@ class AuthControllerTest {
 
     @Test
     void crearUsuario_sinUsuariosPrevios_returnCreated() throws Exception {
-        Rol rol = new Rol(); rol.setId(1L); rol.setNombre("Admin");
-        User user = new User(null, "Juan", "juan@mail.com", "1234", null, null, rol);
+        // Crear DTO de entrada
+        RegisterUserDTO dto = new RegisterUserDTO();
+        dto.setUsername("Juan");
+        dto.setEmail("juan@mail.com");
+        dto.setPassword("1234");
+
+        Rol rol = new Rol(); 
+        rol.setId(1L); 
+        rol.setNombre("Admin");
+
+        User user = new User();
+        user.setId(1L);
+        user.setUsername(dto.getUsername());
+        user.setEmail(dto.getEmail());
+        user.setPassword(dto.getPassword());
+        user.setRol(rol);
 
         when(userService.obtenerUser()).thenReturn(Collections.emptyList());
-        when(userService.crearUser(any(), any(), any(), any())).thenReturn(user);
+        when(userService.crearUser(any(RegisterUserDTO.class), eq(1L))).thenReturn(user);
 
         mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(user)))
+                .content(mapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("Juan"))
                 .andExpect(jsonPath("$.email").value("juan@mail.com"));
     }
+
 
     @Test
     void obtenerUserPorId_returnOK() throws Exception {

@@ -37,32 +37,11 @@ public class UserProfile {
     @Schema(description = "ID del usuario asociado", example = "1")
     private Long userId;
 
-    @Column(nullable = false, length = 30)
-    @NotBlank(message = "El nombre no puede estar vacío")
-    @Size(min = 4, max = 30, message = "El nombre debe tener entre 4 y 30 caracteres")
-    @Schema(description = "Nombre del usuario", example = "Maria")
-    private String nombre;
-
-    @Column(nullable = false, length = 30)
-    @NotBlank(message = "El apellido no puede estar vacío")
-    @Size(min = 4, max = 30, message = "El apellido debe tener entre 4 y 30 caracteres")
-    @Schema(description = "Apellido del usuario", example = "Calfileo")
-    private String apellido;
 
     @Size(max = 255, message = "La URL de la foto no puede exceder los 255 caracteres")
     @Pattern(regexp = "^(https?|ftp)://[^\s/$.?#].[^\s]*$", message = "La URL de la foto debe ser válida") // Validación para URL de foto de perfil
     @Schema(description = "URL de la foto de perfil", example = "https://example.com/foto.jpg")
     private String fotoPerfil;
-
-    @Size(max = 255, message = "La biografía no puede exceder los 255 caracteres")
-    @Schema(description = "Breve biografía del usuario", example = "Soy una estudiante de informática.")
-    private String biografia;
-
-    @Column(nullable = false, unique = true, length = 12)
-    @NotBlank(message = "El número de teléfono no puede estar vacío")
-    @Pattern(regexp = "\\+?\\d{9,12}", message = "El número de teléfono debe contener entre 9 y 12 dígitos")
-    @Schema(description = "Número de teléfono del usuario", example = "+56987654321")
-    private String telefono; // Número de teléfono del usuario, debe ser único y tener entre 9 y 12 dígitos
 
     @Past(message = "La fecha de nacimiento debe ser una fecha pasada") // Validación para que la fecha de nacimiento sea en el pasado
     @NotNull(message = "La fecha de nacimiento no puede estar vacía")

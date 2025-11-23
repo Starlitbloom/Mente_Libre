@@ -20,25 +20,12 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) // Desactiva CSRF para simplificar las pruebas
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui.html",
-                    "/api/v1/usuario_perfil/perfiles",      
-                    "/api/v1/usuario_perfil/perfiles/user",
-                    "/api/v1/usuario_perfil/perfiles/nombre",
-                    "/api/v1/usuario_perfil/perfiles/genero"
-                ).permitAll() // Permite acceso a Swagger y documentación de la API
+                .requestMatchers("/api/v1/usuario_perfil/perfiles").permitAll() // Permite acceso a Swagger y documentación de la API
                 .anyRequest().authenticated() // Requiere autenticación para cualquier otra solicitud
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
     }
 }

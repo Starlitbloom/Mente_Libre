@@ -11,6 +11,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.mentelibre.auth_service.dto.RegisterUserDTO;
+import com.mentelibre.auth_service.dto.UpdateUserDTO;
+import com.mentelibre.auth_service.mapper.UserMapper;
 import com.mentelibre.auth_service.model.Rol;
 import com.mentelibre.auth_service.model.User;
 import com.mentelibre.auth_service.repository.RolRepository;
@@ -29,6 +32,9 @@ public class UserService implements UserDetailsService{
     public UserRepository userRepository;
 
     @Autowired
+    private UserMapper mapper;
+
+    @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
     public List<User> obtenerUser(){ // Metodo para obtener todos los usuarios
@@ -40,17 +46,17 @@ public class UserService implements UserDetailsService{
         .orElseThrow(()-> new RuntimeException("Usuario no encontrado Id: "+ id));
     }
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username);
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email);
 
         if (user == null) {
-            throw new UsernameNotFoundException("Usuario no encontrado: " + username);
+            throw new UsernameNotFoundException("Usuario no encontrado: " + email);
         }
 
         String rolSpring = "ROLE_" + user.getRol().getNombre().toUpperCase();
 
         return new org.springframework.security.core.userdetails.User(
-            user.getUsername(),
+            user.getEmail(),
             user.getPassword(),
             Collections.singletonList(new SimpleGrantedAuthority(rolSpring))
         );
@@ -76,65 +82,63 @@ public class UserService implements UserDetailsService{
         return "Usuario eliminado";
     }
 
-    public User actualizarUser(Long id, String username, String email, String password, Long rolId) {
+    public User actualizarUser(Long id, UpdateUserDTO dto) {
+
         User user = userRepository.findById(id)
-        .orElseThrow(()-> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        if (username != null && !username.trim().isEmpty() && !username.equals(user.getUsername())) {
-            if (userRepository.existsByUsername(username)) {
-                throw new RuntimeException("Ya existe un usuario con ese nombre");
-            }
-            user.setUsername(username);
+        // Validaciones de duplicados
+        if (dto.getUsername() != null && !dto.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(dto.getUsername()))
+                throw new RuntimeException("Nombre de usuario ya en uso");
         }
 
-
-        if (email != null && !email.trim().isEmpty()) {
-            if (userRepository.existsByEmail(email)) {
-                throw new RuntimeException("Ya existe un usuario con ese correo");
-            }
-            user.setEmail(email);
+        if (dto.getEmail() != null && !dto.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(dto.getEmail()))
+                throw new RuntimeException("Correo ya en uso");
         }
 
-        if (password != null && !password.trim().isEmpty()) {
-           user.setPassword(passwordEncoder.encode(password)); 
+        Rol rol = null;
+        if (dto.getRolId() != null) {
+            rol = rolRepository.findById(dto.getRolId())
+                    .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
         }
 
-        if (rolId != null) {
-            Rol rol = rolRepository.findById(rolId)
-            .orElseThrow(()-> new RuntimeException("Rol no encontrado"));
-        user.setRol(rol);
-        }
+        mapper.updateEntityFromDTO(user, dto, rol);
+
         return userRepository.save(user);
     }
 
-    public User crearUser(String username, String email, String password, Long rolId){ // Metodo para crear un usuario
-        if (username == null || email == null || password == null || rolId == null) {
-            throw new RuntimeException("Usuario, correo, contraseña y rol son obligatorios");
-        }   
-        
-        if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("El nombre de usuario ya se encuentra en uso");
-        }
 
-        if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("El correo electronico ya se encuentra en uso");
-        }
-            
-        Rol rol = rolRepository.findById(rolId) // Verifica si el Rol existe
-        .orElseThrow(()-> new RuntimeException("Rol no encontrado ID: "+ rolId));
+    public User crearUser(RegisterUserDTO dto, Long rolId) {
 
-        User user = new User();
-        user.setUsername(username);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(password));
+        if (userRepository.existsByUsername(dto.getUsername()))
+            throw new RuntimeException("El nombre de usuario ya está en uso");
+
+        if (userRepository.existsByEmail(dto.getEmail()))
+            throw new RuntimeException("El correo ya está en uso");
+
+        Rol rol = rolRepository.findById(rolId)
+                .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
+
+        User user = mapper.toEntity(dto);
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setRol(rol);
-        return userRepository.save(user);
 
+        return userRepository.save(user);
     }
 
-    public boolean autenticar(String username, String password){
-        User user = userRepository.findByUsername(username); // Busca en la base de datos el username
+    public boolean autenticar(String email, String password){
+        User user = userRepository.findByEmail(email); // Busca en la base de datos el username
         if (user == null) return false; // Usuario no existe
         return passwordEncoder.matches(password, user.getPassword()); // Verifica la contraseña
+    }
+
+    public User obtenerUserPorEmail(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("Usuario no encontrado: " + email);
+        }
+        return user;
     }
 }

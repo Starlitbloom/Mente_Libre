@@ -2,11 +2,14 @@ package com.mentelibre.user_service.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.mentelibre.user_service.dto.AuthUserDTO;
+import com.mentelibre.user_service.dto.UserProfileDTO;
 import com.mentelibre.user_service.model.UserProfile;
 import com.mentelibre.user_service.repository.UserProfileRepository;
 import com.mentelibre.user_service.webclient.AuthClient;
@@ -44,14 +47,6 @@ public class UserProfileService {
             throw new RuntimeException("El usuario ya tiene un perfil asociado");
         }
 
-        if (perfil.getTelefono() == null || perfil.getTelefono().isBlank()) {
-            throw new RuntimeException("El teléfono es obligatorio");
-        }
-
-        if (userProfileRepository.existsByTelefono(perfil.getTelefono())) {
-            throw new RuntimeException("El teléfono ya se encuentra registrado");
-        }
-
         if (perfil.getGenero() == null || !generoService.existeGenero(perfil.getGenero().getId())) {
             throw new RuntimeException("El género seleccionado no es válido");
         }
@@ -59,47 +54,52 @@ public class UserProfileService {
         return userProfileRepository.save(perfil);
     }
 
-    // Obtener todos los perfiles
-    public List<UserProfile> obtenerUserProfile(){
-        return userProfileRepository.findAll();
+    // Obtener todos los perfiles combinando datos de AuthService
+    public List<UserProfileDTO> obtenerTodosConAuthData() {
+        return userProfileRepository.findAll()
+            .stream()
+            .map(this::mapToDTO)
+            .collect(Collectors.toList());
     }
 
-    // Obtener por id
-    public UserProfile obtenerUserProfilePorId(Long id){
+    // Obtener perfil por userId combinando datos de AuthService
+    public UserProfileDTO obtenerPerfilCompleto(Long userId) {
+        UserProfile perfil = userProfileRepository.findByUserId(userId)
+            .orElseThrow(() -> new RuntimeException("Perfil no encontrado para el usuario Id: " + userId));
+
+        return mapToDTO(perfil);
+    }
+
+    // Service
+    public UserProfile obtenerPerfilPorId(Long id) {
         return userProfileRepository.findById(id)
-        .orElseThrow(()-> new RuntimeException("Perfil de usuario no encontrado Id: "+ id));
+                .orElseThrow(() -> new RuntimeException("Perfil no encontrado para ID: " + id));
     }
 
-    // Obtener perfil por userId (desde AuthService)
-    public UserProfile obtenerUserProfilePorUserId(Long userId){
-        return userProfileRepository.findByUserId(userId)
-        .orElseThrow(()-> new RuntimeException("Perfil no encontrado para el usuario Id: "+ userId));
+    // Mapear UserProfile + AuthService -> UserProfileDTO
+
+    private UserProfileDTO mapToDTO(UserProfile perfil) {
+        AuthUserDTO authData = authClient.obtenerUsuario(perfil.getUserId());
+        UserProfileDTO dto = new UserProfileDTO();
+
+        dto.setUsername(authData.getUsername());
+        dto.setEmail(authData.getEmail());
+        dto.setPhone(authData.getPhone());
+
+        dto.setFotoPerfil(perfil.getFotoPerfil());
+        dto.setFechaNacimiento(perfil.getFechaNacimiento());
+        dto.setDireccion(perfil.getDireccion());
+        dto.setNotificaciones(perfil.getNotificaciones());
+        dto.setGenero(perfil.getGenero());
+
+        return dto;
     }
+
 
     // Actualizar perfil
     public UserProfile actualizarUserProfile(Long id, UserProfile nuevosDatos) {
         UserProfile userProfile = userProfileRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Perfil de usuario no encontrado"));
-
-        if (nuevosDatos.getNombre() != null) {
-            userProfile.setNombre(nuevosDatos.getNombre());
-        }
-
-        if (nuevosDatos.getApellido() != null) {
-            userProfile.setApellido(nuevosDatos.getApellido());
-        }
-
-        if (nuevosDatos.getTelefono() != null && !nuevosDatos.getTelefono().equals(userProfile.getTelefono())) {
-            if (userProfileRepository.existsByTelefono(nuevosDatos.getTelefono())) {
-                throw new RuntimeException("El teléfono ya está en uso por otro perfil");
-            }
-            userProfile.setTelefono(nuevosDatos.getTelefono());
-        }
-
-        if (nuevosDatos.getBiografia() != null) {
-            userProfile.setBiografia(nuevosDatos.getBiografia());
-        }
-
 
         if (nuevosDatos.getFechaNacimiento() != null) {
             userProfile.setFechaNacimiento(nuevosDatos.getFechaNacimiento());
@@ -117,10 +117,16 @@ public class UserProfileService {
             userProfile.setGenero(nuevosDatos.getGenero());
         }
 
+        // Actualizar foto de perfil si viene en la petición
+        if (nuevosDatos.getFotoPerfil() != null) {
+            userProfile.setFotoPerfil(nuevosDatos.getFotoPerfil());
+        }
+
         UserProfile actualizado = userProfileRepository.save(userProfile);
 
         return actualizado;
     }
+
 
     // Eliminar perfil
     public String eliminarUserProfile(Long id) {
@@ -137,16 +143,6 @@ public class UserProfileService {
         }
 
         return "Perfil y usuario eliminados correctamente";
-    }
-
-    // Buscar perfiles por nombre (ignora mayúsculas y minúsculas)
-    public List<UserProfile> buscarPorNombre(String nombre) {
-        return userProfileRepository.findByNombreContainingIgnoreCase(nombre);
-    }
-
-    // Buscar perfiles por apellido
-    public List<UserProfile> buscarPorApellido(String apellido) {
-        return userProfileRepository.findByApellidoContainingIgnoreCase(apellido);
     }
 
     // Buscar perfiles por género

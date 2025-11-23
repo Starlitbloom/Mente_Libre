@@ -27,22 +27,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Deshabilita CSRF ya que usamos JWT
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers( // Rutas públicas
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui.html",
-                    "/api/v1/roles",
-                    "/api/v1/auth/login"
-                ).permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll() // permite crear primer usuario
-                .requestMatchers("/api/v1/users").hasRole("ADMINISTRADOR") // solo ADMINISTRADOR para listar, actualizar, eliminar
-                .anyRequest().authenticated() // El resto de rutas requieren autenticación
-            )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)); // No se crean sesiones, cada solicitud debe ser autenticada
+                // Permitir acceso público a login
+                .requestMatchers("/api/v1/auth/login").permitAll()
 
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class); // Añade el filtro para validar JWT antes del filtro de autenticación
+                // PERMITIR registro de usuarios realmente
+                .requestMatchers(HttpMethod.POST, "/api/v1/users/**").permitAll()
+
+                // PERMITIR GET de usuarios sin token (si quieres)
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/**").permitAll()
+
+                // Cualquier otra ruta sí requiere autenticación
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
+
+
 }
