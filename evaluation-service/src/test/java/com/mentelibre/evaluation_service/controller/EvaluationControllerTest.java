@@ -1,125 +1,216 @@
 package com.mentelibre.evaluation_service.controller;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.mentelibre.evaluation_service.dto.DailyEvaluationRequest;
+import com.mentelibre.evaluation_service.dto.DailyEvaluationResponse;
+import com.mentelibre.evaluation_service.dto.GratitudeEntryRequest;
+import com.mentelibre.evaluation_service.dto.GratitudeEntryResponse;
+import com.mentelibre.evaluation_service.service.DailyEvaluationService;
+import com.mentelibre.evaluation_service.service.GratitudeEntryService;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.web.servlet.MockMvc;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-import com.mentelibre.evaluation_service.model.Evaluation;
-import com.mentelibre.evaluation_service.service.EvaluationService;
+@ExtendWith(MockitoExtension.class)
+class EvaluationControllerTest {
 
-@WebMvcTest(controllers = EvaluationController.class)
-@AutoConfigureMockMvc(addFilters = false) // <- esto desactiva JwtRequestFilter
-public class EvaluationControllerTest {
+    @Mock
+    private DailyEvaluationService dailyEvaluationService;
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Mock
+    private GratitudeEntryService gratitudeEntryService;
 
-    @MockBean
-    private EvaluationService evaluationService;
+    @InjectMocks
+    private EvaluationController evaluationController;
 
-    // ------------------- LISTAR EVALUACIONES -------------------
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMINISTRADOR"})
-    void listarEvaluaciones_returnOK() throws Exception {
-        Evaluation e = new Evaluation();
-        e.setId(1L);
-        e.setTitulo("Evaluación 1");
+    void upsertDailyEvaluation_devuelveRespuestaDelService() {
+        // given
+        String userId = "user-123";
+        DailyEvaluationRequest request = new DailyEvaluationRequest();
+        request.setDate(LocalDate.of(2025, 11, 23));
+        request.setMoodLabel("FELIZ");
+        request.setGlobalScore(85);
+        request.setReflection("Día productivo.");
 
-        when(evaluationService.obtenerEvaluations()).thenReturn(List.of(e));
+        DailyEvaluationResponse expected = DailyEvaluationResponse.builder()
+                .id(1L)
+                .userId(userId)
+                .date(request.getDate())
+                .moodLabel("FELIZ")
+                .globalScore(85)
+                .reflection("Día productivo.")
+                .build();
 
-        mockMvc.perform(get("/api/v1/evaluations"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].titulo").value("Evaluación 1"));
+        when(dailyEvaluationService.upsertDailyEvaluation(userId, request))
+                .thenReturn(expected);
+
+        // when
+        DailyEvaluationResponse response =
+                evaluationController.upsertDailyEvaluation(userId, request);
+
+        // then
+        assertNotNull(response);
+        assertEquals(1L, response.getId());
+        assertEquals(userId, response.getUserId());
+        assertEquals("FELIZ", response.getMoodLabel());
+
+        verify(dailyEvaluationService).upsertDailyEvaluation(userId, request);
     }
 
-    // ------------------- OBTENER EVALUACION POR ID -------------------
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMINISTRADOR"})
-    void obtenerEvaluacionPorId_returnOK() throws Exception {
-        Evaluation e = new Evaluation();
-        e.setId(1L);
-        e.setTitulo("Evaluación 1");
+    void getDailyEvaluation_llamaServiceYDevuelveRespuesta() {
+        // given
+        String userId = "user-123";
+        LocalDate date = LocalDate.of(2025, 11, 23);
 
-        when(evaluationService.obtenerEvaluationPorId(1L)).thenReturn(e);
+        DailyEvaluationResponse expected = DailyEvaluationResponse.builder()
+                .id(2L)
+                .userId(userId)
+                .date(date)
+                .moodLabel("TRISTE")
+                .globalScore(40)
+                .build();
 
-        mockMvc.perform(get("/api/v1/evaluations/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.titulo").value("Evaluación 1"));
+        when(dailyEvaluationService.getByDate(userId, date))
+                .thenReturn(expected);
+
+        // when
+        DailyEvaluationResponse response =
+                evaluationController.getDailyEvaluation(userId, date);
+
+        // then
+        assertNotNull(response);
+        assertEquals(2L, response.getId());
+        assertEquals("TRISTE", response.getMoodLabel());
+
+        verify(dailyEvaluationService).getByDate(userId, date);
     }
 
-    // ------------------- CREAR EVALUACION -------------------
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMINISTRADOR"})
-    void crearEvaluacion_returnCreated() throws Exception {
-        Evaluation e = new Evaluation();
-        e.setId(1L);
-        e.setTitulo("Nueva Eval");
+    void getHistory_devuelveListaDesdeService() {
+        // given
+        String userId = "user-123";
 
-        when(evaluationService.crearEvaluation(any(Evaluation.class), anyString())).thenReturn(e);
+        DailyEvaluationResponse r1 = DailyEvaluationResponse.builder()
+                .id(1L).userId(userId)
+                .date(LocalDate.of(2025, 11, 20))
+                .build();
 
-        String json = """
-            {
-              "titulo": "Nueva Eval",
-              "descripcion": "Desc"
-            }
-        """;
+        DailyEvaluationResponse r2 = DailyEvaluationResponse.builder()
+                .id(2L).userId(userId)
+                .date(LocalDate.of(2025, 11, 21))
+                .build();
 
-        mockMvc.perform(post("/api/v1/evaluations")
-                .header("Authorization", "Bearer token")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.titulo").value("Nueva Eval"));
+        when(dailyEvaluationService.getHistory(userId))
+                .thenReturn(List.of(r1, r2));
+
+        // when
+        List<DailyEvaluationResponse> list =
+                evaluationController.getHistory(userId);
+
+        // then
+        assertEquals(2, list.size());
+        assertEquals(1L, list.get(0).getId());
+        assertEquals(2L, list.get(1).getId());
+
+        verify(dailyEvaluationService).getHistory(userId);
     }
 
-    // ------------------- ACTUALIZAR EVALUACION -------------------
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMINISTRADOR"})
-    void actualizarEvaluacion_returnOK() throws Exception {
-        Evaluation e = new Evaluation();
-        e.setId(1L);
-        e.setTitulo("Actualizado");
+    void createGratitudeEntry_devuelveRespuestaDelService() {
+        // given
+        String userId = "user-123";
 
-        when(evaluationService.actualizarEvaluation(eq(1L), any(Evaluation.class))).thenReturn(e);
+        GratitudeEntryRequest request = new GratitudeEntryRequest();
+        request.setText("Gracias por el apoyo de mis amigos.");
 
-        String json = """
-            {
-              "titulo": "Actualizado",
-              "descripcion": "Nueva descripción"
-            }
-        """;
+        GratitudeEntryResponse expected = GratitudeEntryResponse.builder()
+                .id(10L)
+                .userId(userId)
+                .text("Gracias por el apoyo de mis amigos.")
+                .build();
 
-        mockMvc.perform(put("/api/v1/evaluations/1")
-                .header("Authorization", "Bearer token")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.titulo").value("Actualizado"));
+        when(gratitudeEntryService.createEntry(userId, request))
+                .thenReturn(expected);
+
+        // when
+        GratitudeEntryResponse response =
+                evaluationController.createGratitudeEntry(userId, request);
+
+        // then
+        assertNotNull(response);
+        assertEquals(10L, response.getId());
+        assertEquals(userId, response.getUserId());
+        assertEquals("Gracias por el apoyo de mis amigos.", response.getText());
+
+        verify(gratitudeEntryService).createEntry(userId, request);
     }
 
-    // ------------------- ELIMINAR EVALUACION -------------------
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMINISTRADOR"})
-    void eliminarEvaluacion_returnOK() throws Exception {
-        when(evaluationService.eliminarEvaluation(1L)).thenReturn("Evaluación eliminada correctamente");
+    void getGratitudeEntries_devuelveListaDesdeService() {
+        // given
+        String userId = "user-123";
 
-        mockMvc.perform(delete("/api/v1/evaluations/1")
-                .header("Authorization", "Bearer token"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Evaluación eliminada correctamente"));
+        GratitudeEntryResponse g1 = GratitudeEntryResponse.builder()
+                .id(1L)
+                .userId(userId)
+                .text("Texto 1")
+                .build();
+
+        GratitudeEntryResponse g2 = GratitudeEntryResponse.builder()
+                .id(2L)
+                .userId(userId)
+                .text("Texto 2")
+                .build();
+
+        when(gratitudeEntryService.getAllForUser(userId))
+                .thenReturn(List.of(g1, g2));
+
+        // when
+        List<GratitudeEntryResponse> list =
+                evaluationController.getGratitudeEntries(userId);
+
+        // then
+        assertEquals(2, list.size());
+        assertEquals(1L, list.get(0).getId());
+        assertEquals(2L, list.get(1).getId());
+
+        verify(gratitudeEntryService).getAllForUser(userId);
+    }
+
+    @Test
+    void getGratitudeEntriesForDay_devuelveListaDesdeService() {
+        // given
+        String userId = "user-123";
+        LocalDate date = LocalDate.of(2025, 11, 23);
+
+        GratitudeEntryResponse g1 = GratitudeEntryResponse.builder()
+                .id(1L)
+                .userId(userId)
+                .date(date)
+                .text("Gracias por dormir bien.")
+                .build();
+
+        when(gratitudeEntryService.getForDay(userId, date))
+                .thenReturn(List.of(g1));
+
+        // when
+        List<GratitudeEntryResponse> list =
+                evaluationController.getGratitudeEntriesForDay(userId, date);
+
+        // then
+        assertEquals(1, list.size());
+        assertEquals(1L, list.get(0).getId());
+        assertEquals("Gracias por dormir bien.", list.get(0).getText());
+
+        verify(gratitudeEntryService).getForDay(userId, date);
     }
 }

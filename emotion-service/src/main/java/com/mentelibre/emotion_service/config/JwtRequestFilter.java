@@ -5,56 +5,61 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-
 import java.io.IOException;
 import java.util.Collections;
 
+/**
+ * Filtro que:
+ * - Lee el header Authorization: Bearer <token>
+ * - Valida el JWT con JwtUtil
+ * - Si es válido, deja al usuario autenticado en el SecurityContext
+ */
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 
-    @Value("${jwt.secret}")
-    private String SECRET_KEY;
+    private final JwtUtil jwtUtil;
+
+    public JwtRequestFilter() {
+        // Como JwtUtil no es @Component, lo instanciamos manualmente.
+        this.jwtUtil = new JwtUtil();
+    }
 
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain chain
+            FilterChain filterChain
     ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
+        String jwt = null;
         String username = null;
-        String rol = null;
 
+        // Header debe ser: "Bearer <token>"
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String jwt = authHeader.substring(7);
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(Keys.hmacShaKeyFor(SECRET_KEY.getBytes()))
-                    .build()
-                    .parseClaimsJws(jwt)
-                    .getBody();
+            jwt = authHeader.substring(7);
 
-            username = claims.getSubject();
-            rol = claims.get("role", String.class);
+            if (jwtUtil.validateToken(jwt)) {
+                username = jwtUtil.extractUsername(jwt);
+            }
         }
 
+        // Si el token es válido y aún no hay autenticación en el contexto:
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            var authToken = new UsernamePasswordAuthenticationToken(
-                    username,
-                    null,
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + rol))
-            );
+
+            // Aquí no buscamos en BD, solo creamos un Authentication sencillo
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            username,           // principal
+                            null,               // credenciales
+                            Collections.emptyList() // sin roles (puedes agregar roles si usas claims)
+                    );
 
             authToken.setDetails(
                     new WebAuthenticationDetailsSource().buildDetails(request)
@@ -63,6 +68,16 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
-        chain.doFilter(request, response);
+        filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Excluye Swagger de este filtro para que puedas ver la doc sin token.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs");
     }
 }

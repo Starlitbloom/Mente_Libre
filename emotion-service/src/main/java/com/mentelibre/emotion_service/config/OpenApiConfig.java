@@ -16,6 +16,6 @@ public class OpenApiConfig {
                 .title("Mente Libre Emotion Service API")
                 .version("1.0.0")
                 .description("Microservicio para el registro, análisis y resumen de emociones de los usuarios.")
-        );
+            );
     }
 }

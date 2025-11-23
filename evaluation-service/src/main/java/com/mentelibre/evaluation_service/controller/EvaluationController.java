@@ -1,168 +1,87 @@
 package com.mentelibre.evaluation_service.controller;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.mentelibre.evaluation_service.dto.DailyEvaluationRequest;
+import com.mentelibre.evaluation_service.dto.DailyEvaluationResponse;
+import com.mentelibre.evaluation_service.dto.GratitudeEntryRequest;
+import com.mentelibre.evaluation_service.dto.GratitudeEntryResponse;
+import com.mentelibre.evaluation_service.service.DailyEvaluationService;
+import com.mentelibre.evaluation_service.service.GratitudeEntryService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import com.mentelibre.evaluation_service.model.Answer;
-import com.mentelibre.evaluation_service.model.Evaluation;
-import com.mentelibre.evaluation_service.model.EvaluationResult;
-import com.mentelibre.evaluation_service.model.Question;
-import com.mentelibre.evaluation_service.service.EvaluationService;
-import com.mentelibre.evaluation_service.webclient.EmotionClient;
+import java.time.LocalDate;
+import java.util.List;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-
+/**
+ * API para Bitácora diaria + Diario de Gratitud.
+ *
+ * MÁS ADELANTE:
+ * - el userId saldrá del token JWT (auth-service).
+ * Por ahora lo recibimos por query o header.
+ */
 @RestController
-@RequestMapping("/api/v1/evaluations")
+@RequestMapping("/api/evaluations")
+@RequiredArgsConstructor
 public class EvaluationController {
 
-    @Autowired
-    private EvaluationService evaluationService;
+    private final DailyEvaluationService dailyEvaluationService;
+    private final GratitudeEntryService gratitudeEntryService;
 
-    @Autowired
-    private EmotionClient emotionClient;
+    // ================== DAILY EVALUATION (BITÁCORA) ==================
 
-
-    // ------------------- EVALUATION -------------------
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @GetMapping
-    public ResponseEntity<List<Evaluation>> listarEvaluaciones() {
-        List<Evaluation> evaluations = evaluationService.obtenerEvaluations();
-        return ResponseEntity.ok(evaluations);
+    @PostMapping("/daily")
+    @ResponseStatus(HttpStatus.OK)
+    public DailyEvaluationResponse upsertDailyEvaluation(
+            @RequestParam("userId") String userId,
+            @RequestBody DailyEvaluationRequest request
+    ) {
+        return dailyEvaluationService.upsertDailyEvaluation(userId, request);
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @PostMapping
-    public ResponseEntity<?> crearEvaluation(@RequestBody Evaluation evaluation,
-                                            @RequestHeader("Authorization") String authHeader) {
-        try {
-            Evaluation nueva = evaluationService.crearEvaluation(evaluation, authHeader);
-            return ResponseEntity.status(HttpStatus.CREATED).body(nueva);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
+    @GetMapping("/daily")
+    public DailyEvaluationResponse getDailyEvaluation(
+            @RequestParam("userId") String userId,
+            @RequestParam("date")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date
+    ) {
+        return dailyEvaluationService.getByDate(userId, date);
     }
 
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'CLIENTE')")
-    @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerEvaluationPorId(@PathVariable Long id) {
-        try {
-            Evaluation evaluation = evaluationService.obtenerEvaluationPorId(id);
-            return ResponseEntity.ok(evaluation);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+    @GetMapping("/daily/history")
+    public List<DailyEvaluationResponse> getHistory(
+            @RequestParam("userId") String userId
+    ) {
+        return dailyEvaluationService.getHistory(userId);
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarEvaluation(@PathVariable Long id, @RequestBody Evaluation evaluation) {
-        try {
-            Evaluation actualizado = evaluationService.actualizarEvaluation(id, evaluation);
-            return ResponseEntity.ok(actualizado);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+    // ================== DIARIO DE GRATITUD ==================
+
+    @PostMapping("/gratitude")
+    @ResponseStatus(HttpStatus.CREATED)
+    public GratitudeEntryResponse createGratitudeEntry(
+            @RequestParam("userId") String userId,
+            @RequestBody GratitudeEntryRequest request
+    ) {
+        return gratitudeEntryService.createEntry(userId, request);
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminarEvaluation(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(evaluationService.eliminarEvaluation(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+    @GetMapping("/gratitude")
+    public List<GratitudeEntryResponse> getGratitudeEntries(
+            @RequestParam("userId") String userId
+    ) {
+        return gratitudeEntryService.getAllForUser(userId);
     }
 
-    // ------------------- EVALUATION RESULT -------------------
-    @PreAuthorize("hasRole('CLIENTE')")
-    @PostMapping("/results")
-    public ResponseEntity<?> crearEvaluationResult(@RequestBody EvaluationResult result,
-                                                @RequestHeader("Authorization") String authHeader) {
-        try {
-            EvaluationResult nuevo = evaluationService.crearEvaluationResult(result, authHeader);
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
+    @GetMapping("/gratitude/day")
+    public List<GratitudeEntryResponse> getGratitudeEntriesForDay(
+            @RequestParam("userId") String userId,
+            @RequestParam("date")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date
+    ) {
+        return gratitudeEntryService.getForDay(userId, date);
     }
-
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'CLIENTE')")
-    @GetMapping("/results/user/{userId}")
-    public ResponseEntity<?> obtenerResultadosPorUserId(@PathVariable Long userId) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Long authUserId = Long.parseLong(auth.getName());
-        boolean esAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
-
-        if (!esAdmin && !authUserId.equals(userId)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("No puedes ver resultados de otro usuario");
-        }
-
-        List<EvaluationResult> resultados = evaluationService.obtenerResultadosPorUserId(userId);
-        return ResponseEntity.ok(resultados);
-    }
-
-    // ------------------- QUESTIONS -------------------
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'CLIENTE')")
-    @GetMapping("/{evaluationId}/questions")
-    public ResponseEntity<List<Question>> obtenerPreguntasPorEvaluationId(@PathVariable Long evaluationId) {
-        return ResponseEntity.ok(evaluationService.obtenerPreguntasPorEvaluationId(evaluationId));
-    }
-
-    // ------------------- ANSWERS -------------------
-    @PreAuthorize("hasRole('CLIENTE')")
-    @PostMapping("/answers")
-    public ResponseEntity<?> crearAnswer(@RequestBody Answer answer) {
-        try {
-            Answer nuevo = evaluationService.crearAnswer(answer);
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
-
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'CLIENTE')")
-    @GetMapping("/answers/result/{resultId}")
-    public ResponseEntity<?> obtenerRespuestasPorEvaluationResultId(@PathVariable Long resultId) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Long authUserId = Long.parseLong(auth.getName());
-        boolean esAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
-
-        // Solo el dueño del resultado o administrador
-        List<Answer> respuestas = evaluationService.obtenerRespuestasPorEvaluationResultId(resultId);
-        if (!esAdmin) {
-            boolean esPropietario = respuestas.stream()
-                    .allMatch(a -> a.getEvaluationResult().getUserId().equals(authUserId));
-            if (!esPropietario) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body("No puedes ver respuestas de un resultado que no es tuyo");
-            }
-        }
-
-        return ResponseEntity.ok(respuestas);
-    }
-
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR','CLIENTE')")
-    @GetMapping("/user/{userId}/emotions/summary")
-    public ResponseEntity<?> obtenerResumenEmociones(@PathVariable Long userId,
-                                                    @RequestHeader("Authorization") String authHeader) {
-        try {
-            Object resumen = emotionClient.obtenerResumenSemanal(userId, authHeader);
-            return ResponseEntity.ok(resumen);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
-
 }
