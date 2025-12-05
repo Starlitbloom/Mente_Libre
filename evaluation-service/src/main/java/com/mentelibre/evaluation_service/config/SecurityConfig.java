@@ -12,31 +12,42 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-@EnableMethodSecurity // Habilita la seguridad a nivel de método para controlar el acceso a los endpoints
+@EnableMethodSecurity
 public class SecurityConfig {
+
     @Autowired
-    private JwtRequestFilter jwtRequestFilter; // Filtro JWT para validar tokens
-    
+    private JwtRequestFilter jwtRequestFilter;
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception { // Configuración de seguridad HTTP
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         http
-            .csrf(csrf -> csrf.disable()) // Desactiva CSRF para simplificar las pruebas
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/swagger-ui.html"
-                ).permitAll() // Permite acceso a Swagger y documentación de la API
-                .anyRequest().authenticated() // Requiere autenticación para cualquier otra solicitud
+                ).permitAll()
+
+                // ⭐ IMPORTANTE: deja el login del auth-service público
+                .requestMatchers("/auth/**").permitAll()
+
+                // Todo lo demás obliga a enviar JWT
+                .anyRequest().authenticated()
             )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);    
-        return http.build(); 
+            .sessionManagement(sess -> 
+                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            );
+
+        // ✔ Filtro JWT ANTES del filtro estándar
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
 }
