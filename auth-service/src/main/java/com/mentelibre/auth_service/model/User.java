@@ -39,7 +39,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 30) // Campo obligatorio en base de datos, debe ser único y longitud max de 50 caracteres
     @NotBlank(message = "Apodo obligatorio") // Validacion para que no este vacio
     @Pattern(regexp = "^[A-Za-zÁÉÍÓÚÑáéíóúñ ]+$", message = "Solo letras y espacios")
-    @Size(min = 4, message = "Debe tener al menos 3 caracteres") // Para que el username(nombre de usuario) no sea demasiado corto
+    @Size(min = 4, message = "Debe tener al menos 4 caracteres") // Para que el username(nombre de usuario) no sea demasiado corto
     private String username;
 
     @Column(nullable = false, unique = true, length = 50) // Para la recuperación de contraseña y notificaciones

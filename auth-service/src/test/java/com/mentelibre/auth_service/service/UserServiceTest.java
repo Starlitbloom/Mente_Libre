@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import com.mentelibre.auth_service.dto.RegisterUserDTO;
-import com.mentelibre.auth_service.mapper.UserMapper;
 import com.mentelibre.auth_service.model.Rol;
 import com.mentelibre.auth_service.model.User;
 import com.mentelibre.auth_service.repository.RolRepository;
@@ -36,65 +33,53 @@ public class UserServiceTest {
     @InjectMocks
     private UserService service;
 
-    @Mock
-    private UserMapper mapper; // Agregar este mock
-
     @Test
     void crearUser_Exitoso() {
         RegisterUserDTO dto = new RegisterUserDTO();
         dto.setUsername("Thomas");
         dto.setEmail("thomas@ejemplo.com");
         dto.setPassword("estudiante1234");
-        Long rolId = 2L;
+        dto.setPhone("123456789");
 
-        // Configurar mocks
         when(repository.existsByUsername(dto.getUsername())).thenReturn(false);
         when(repository.existsByEmail(dto.getEmail())).thenReturn(false);
 
         Rol rol = new Rol();
-        rol.setId(rolId);
-        rol.setNombre("Estudiante");
-        when(rolRepository.findById(rolId)).thenReturn(Optional.of(rol));
+        rol.setId(2L);
+        rol.setNombre("ROLE_USER");
 
-        when(passwordEncoder.encode(dto.getPassword())).thenReturn("contraseñaEncriptada");
+        when(rolRepository.findByNombre("ROLE_USER")).thenReturn(rol);
+        when(passwordEncoder.encode(dto.getPassword())).thenReturn("encoded");
 
-        // Mock del mapper
-        User mappedUser = new User();
-        mappedUser.setUsername(dto.getUsername());
-        mappedUser.setEmail(dto.getEmail());
-        mappedUser.setPassword(dto.getPassword());
-        when(mapper.toEntity(dto)).thenReturn(mappedUser);
+        User saved = new User();
+        saved.setId(1L);
+        saved.setUsername(dto.getUsername());
+        saved.setEmail(dto.getEmail());
+        saved.setPassword("encoded");
+        saved.setRol(rol);
 
-        // Mock de save
-        User userSaved = new User();
-        userSaved.setUsername(dto.getUsername());
-        userSaved.setEmail(dto.getEmail());
-        userSaved.setPassword("contraseñaEncriptada");
-        userSaved.setRol(rol);
-        when(repository.save(any(User.class))).thenReturn(userSaved);
+        when(repository.save(any(User.class))).thenReturn(saved);
 
-        // Ejecutar el método
-        User resultado = service.crearUser(dto, rolId);
+        User resultado = service.crearUser(dto);
 
-        // Verificar resultados
-        assertEquals(dto.getUsername(), resultado.getUsername());
-        assertEquals(dto.getEmail(), resultado.getEmail());
-        assertEquals("contraseñaEncriptada", resultado.getPassword());
-        assertEquals(rol, resultado.getRol());
+        assertEquals("Thomas", resultado.getUsername());
+        assertEquals("thomas@ejemplo.com", resultado.getEmail());
+        assertEquals("encoded", resultado.getPassword());
+        assertEquals("ROLE_USER", resultado.getRol().getNombre());
     }
 
     @Test
     void crearUser_UsernameDuplicado() {
+
         RegisterUserDTO dto = new RegisterUserDTO();
         dto.setUsername("Thomas");
         dto.setEmail("thomas@ejemplo.com");
-        dto.setPassword("estudiante1234");
-        Long rolId = 2L;
+        dto.setPassword("1234");
 
         when(repository.existsByUsername(dto.getUsername())).thenReturn(true);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            service.crearUser(dto, rolId);
+            service.crearUser(dto);
         });
 
         assertEquals("El nombre de usuario ya está en uso", ex.getMessage());
@@ -102,38 +87,39 @@ public class UserServiceTest {
 
     @Test
     void crearUser_EmailDuplicado() {
+
         RegisterUserDTO dto = new RegisterUserDTO();
         dto.setUsername("Thomas");
         dto.setEmail("thomas@ejemplo.com");
-        dto.setPassword("estudiante1234");
-        Long rolId = 2L;
+        dto.setPassword("1234");
 
         when(repository.existsByUsername(dto.getUsername())).thenReturn(false);
         when(repository.existsByEmail(dto.getEmail())).thenReturn(true);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            service.crearUser(dto, rolId);
+            service.crearUser(dto);
         });
 
         assertEquals("El correo ya está en uso", ex.getMessage());
     }
 
     @Test
-    void crearUser_RolNoExiste() {
+    void crearUser_RolUserNoExiste() {
+
         RegisterUserDTO dto = new RegisterUserDTO();
         dto.setUsername("Thomas");
         dto.setEmail("thomas@ejemplo.com");
-        dto.setPassword("estudiante1234");
-        Long rolId = 4L;
+        dto.setPassword("1234");
 
         when(repository.existsByUsername(dto.getUsername())).thenReturn(false);
         when(repository.existsByEmail(dto.getEmail())).thenReturn(false);
-        when(rolRepository.findById(rolId)).thenReturn(Optional.empty());
+        when(rolRepository.findByNombre("ROLE_USER")).thenReturn(null);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            service.crearUser(dto, rolId);
+            service.crearUser(dto);
         });
 
-        assertEquals("Rol no encontrado", ex.getMessage());
+        assertEquals("El rol ROLE_USER no existe en la base de datos", ex.getMessage());
     }
+
 }

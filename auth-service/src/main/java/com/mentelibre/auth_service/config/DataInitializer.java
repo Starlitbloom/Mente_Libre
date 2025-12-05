@@ -1,31 +1,34 @@
 package com.mentelibre.auth_service.config;
 
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import com.mentelibre.auth_service.model.Rol;
 import com.mentelibre.auth_service.repository.RolRepository;
 
-@Component
-public class DataInitializer implements CommandLineRunner {
+@Configuration
+public class DataInitializer {
 
-    @Autowired
-    private RolRepository rolRepository;
+    @Bean
+    public CommandLineRunner initRoles(RolRepository rolRepository) {
+        return args -> {
 
-    @Override
-    public void run(String... args) throws Exception {
-        // Crear rol ADMINISTRADOR si no existe
-        if (rolRepository.findByNombre("ADMINISTRADOR") == null) {
-            rolRepository.save(new Rol(null, "ADMINISTRADOR", null, null, null));
-        }
+            if (rolRepository.count() == 0) {
 
-        // Crear rol CLIENTE si no existe
-        if (rolRepository.findByNombre("CLIENTE") == null) {
-            rolRepository.save(new Rol(null, "CLIENTE", null, null, null));
-        }
+                Rol admin = new Rol();
+                admin.setNombre("ROLE_ADMIN");
+                rolRepository.save(admin);
 
-        System.out.println("Roles iniciales ADMINISTRADOR y CLIENTE verificados/creados");
+                Rol user = new Rol();
+                user.setNombre("ROLE_USER");
+                rolRepository.save(user);
+
+                System.out.println("Roles creados automáticamente.");
+            } else {
+                System.out.println("Roles ya existen, no se crearán.");
+            }
+        };
     }
 
 }

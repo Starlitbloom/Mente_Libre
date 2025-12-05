@@ -8,7 +8,5 @@ public class RegisterUserDTO {
     private String email;
     private String phone;
     private String password;
-    private Long rolId;
-
 }
 

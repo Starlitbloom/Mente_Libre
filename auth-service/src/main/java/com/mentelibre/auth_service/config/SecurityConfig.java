@@ -3,7 +3,6 @@ package com.mentelibre.auth_service.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -26,26 +25,46 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         http
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> {}) // Habilitar CORS para Android Studio
+
             .authorizeHttpRequests(auth -> auth
-                // Permitir acceso público a login
-                .requestMatchers("/api/v1/auth/login").permitAll()
 
-                // PERMITIR registro de usuarios realmente
-                .requestMatchers(HttpMethod.POST, "/api/v1/users/**").permitAll()
+                // ============================
+                // RUTAS PÚBLICAS
+                // ============================
+                .requestMatchers(
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/register",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
+                ).permitAll()
 
-                // PERMITIR GET de usuarios sin token (si quieres)
-                .requestMatchers(HttpMethod.GET, "/api/v1/users/**").permitAll()
+                // ============================
+                // RUTAS SOLO ADMIN
+                // ============================
+                .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/roles/**").hasRole("ADMIN")
 
-                // Cualquier otra ruta sí requiere autenticación
+                // ============================
+                // RUTAS AUTENTICADAS
+                // ============================
+                .requestMatchers("/api/v1/auth/me").authenticated()
+
+                // ============================
+                // LO DEMÁS REQUIERE TOKEN
+                // ============================
                 .anyRequest().authenticated()
             )
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            );
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
-
-
 }

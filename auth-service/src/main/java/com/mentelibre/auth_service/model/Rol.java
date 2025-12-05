@@ -9,7 +9,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -48,7 +47,7 @@ public class Rol {
     private LocalDateTime actualizadoEn; // Fecha en la que se actualizado
 
 
-    @OneToMany(mappedBy = "rol", cascade = CascadeType.ALL) // Rol tiene muchos usuarios, si se borra un rol se borraran todos los usuario
+    @OneToMany(mappedBy = "rol") // Rol tiene muchos usuarios, si se borra un rol se borraran todos los usuario
     @JsonIgnore // No se incluiran los usuarios cuando se hagan las consultas
     private List<User> usuarios; // Lista de todos los usuarios que tienen este rol
 }

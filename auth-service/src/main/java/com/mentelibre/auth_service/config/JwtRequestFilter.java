@@ -2,7 +2,6 @@ package com.mentelibre.auth_service.config;
 
 import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -36,12 +35,17 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         System.out.println("PATH: " + request.getRequestURI() + " METHOD: " + request.getMethod());
 
         // Permitir rutas públicas sin JWT
-        if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/users")) {
+        // Rutas públicas que NO requieren JWT
+        if (path.startsWith("/api/v1/auth/login") ||
+            path.startsWith("/api/v1/auth/register") ||
+            path.startsWith("/v3/api-docs") ||
+            path.startsWith("/swagger-ui") || 
+            path.startsWith("/swagger-ui.html")) 
+            {
+
             chain.doFilter(request, response);
             return;
         }
-
-
 
         final String authHeader = request.getHeader("Authorization");
         String username = null;
