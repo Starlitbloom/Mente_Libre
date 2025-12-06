@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -352,7 +353,7 @@ public class AuthController {
         }
     }
 
-     // ============================================================
+    // ============================================================
     //  PERFIL DE USUARIO (PROPIA CUENTA)
     // Endpoint para consultar un usuario por ID
     @Operation(summary = "Obtener mi perfil", description = "Devuelve los datos del usuario autenticado según el token JWT.")
@@ -472,6 +473,32 @@ public class AuthController {
             return ResponseEntity.ok(mensaje);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // ============================================================
+    // CLIENT
+    // Endpoint para validar un token
+    @Operation(summary = "Validar token", description = "Devuelve el userId si el token es válido.")
+    @ApiResponse(responseCode = "200", description = "Token válido")
+    @ApiResponse(responseCode = "401", description = "Token inválido")
+    @GetMapping("/auth/validate")
+    public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String authHeader) {
+
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido");
+            }
+
+            String token = authHeader.substring(7);
+
+            String email = jwtUtil.extractUsername(token);   // recupera email del token
+            User user = userService.obtenerUserPorEmail(email);
+
+            return ResponseEntity.ok(user.getId()); // Storage necesita SOLO el userId
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido");
         }
     }
 

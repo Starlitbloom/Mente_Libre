@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,7 +17,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Entity
-@Table(name = "files")
+@Table(name = "archivos")
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Archivo subido por un usuario, puede ser foto de perfil o diario de gratitud")
@@ -42,6 +43,7 @@ public class FileEntity {
     private String url;
 
     @Column(nullable = false)
+    @NotNull(message = "El ownerId es obligatorio")
     @Schema(description = "ID del usuario dueño del archivo", example = "5")
     private Long ownerId;
 

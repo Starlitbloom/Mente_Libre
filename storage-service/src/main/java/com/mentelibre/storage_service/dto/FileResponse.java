@@ -1,14 +1,13 @@
-package com.mentelibre.storage_service.model;
+package com.mentelibre.storage_service.dto;
 
+import com.mentelibre.storage_service.model.FileCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Respuesta de archivo para el cliente, solo con información necesaria")
+@Schema(description = "Respuesta que se envía al frontend al subir un archivo")
 public class FileResponse {
 
     @Schema(description = "ID del archivo", example = "1")

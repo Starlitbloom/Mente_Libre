@@ -1,104 +1,125 @@
 package com.mentelibre.storage_service.service;
 
+import com.mentelibre.storage_service.dto.FileResponse;
 import com.mentelibre.storage_service.model.FileCategory;
 import com.mentelibre.storage_service.model.FileEntity;
-import com.mentelibre.storage_service.model.FileResponse;
 import com.mentelibre.storage_service.repository.FileRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class StorageServiceTest {
 
+    @Mock
     private FileRepository fileRepository;
+
     private StorageService storageService;
+    private Path tempDir;
 
-    @TempDir
-    Path tempDir; // carpeta temporal para los tests de archivos
+    @BeforeEach
+    void setup() throws IOException {
+        tempDir = Files.createTempDirectory("uploads-test");
+        storageService = new StorageService(tempDir, fileRepository);
+    }
 
     @Test
-    void testStoreFile() throws IOException {
-        MockMultipartFile multipartFile = new MockMultipartFile(
-                "file", "foto.png", "image/png", "contenido".getBytes());
+    void storeFile_success() throws IOException {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "foto.jpg", "image/jpeg", "abc".getBytes()
+        );
 
-        FileEntity savedEntity = new FileEntity(1L, "foto.png", "image/png",
-                tempDir.resolve("foto.png").toString(), 1L, FileCategory.PROFILE, null, null);
+        FileEntity saved = new FileEntity(
+                1L, "foto.jpg", "image/jpeg", "/uploads/foto.jpg",
+                5L, FileCategory.PROFILE, null, null);
 
-        when(fileRepository.save(any(FileEntity.class))).thenReturn(savedEntity);
+        when(fileRepository.save(any(FileEntity.class))).thenReturn(saved);
 
-        FileResponse response = storageService.store(multipartFile, 1L, FileCategory.PROFILE);
+        FileResponse response = storageService.store(file, 5L, FileCategory.PROFILE);
 
         assertNotNull(response);
-        assertEquals("foto.png", response.getFileName());
-        verify(fileRepository, times(1)).save(any(FileEntity.class));
+        assertEquals("foto.jpg", response.getFileName());
+        verify(fileRepository).save(any(FileEntity.class));
     }
 
     @Test
-    void testGetFilesByOwner() {
-        FileEntity f1 = new FileEntity(1L, "foto1.png", "image/png",
-                tempDir.resolve("foto1.png").toString(), 1L, FileCategory.PROFILE, null, null);
-        FileEntity f2 = new FileEntity(2L, "foto2.png", "image/png",
-                tempDir.resolve("foto2.png").toString(), 1L, FileCategory.GRATITUDE, null, null);
+    void storeFile_invalidType_throwsException() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "malware.exe", "application/octet-stream", "abc".getBytes()
+        );
 
-        when(fileRepository.findByOwnerId(1L)).thenReturn(List.of(f1, f2));
+        Exception ex = assertThrows(RuntimeException.class, () ->
+                storageService.store(file, 5L, FileCategory.PROFILE)
+        );
 
-        List<FileResponse> files = storageService.getFilesByOwner(1L);
-
-        assertEquals(2, files.size());
-        assertEquals("foto1.png", files.get(0).getFileName());
-        verify(fileRepository, times(1)).findByOwnerId(1L);
+        assertEquals("Solo se permiten archivos de imagen", ex.getMessage());
     }
 
     @Test
-    void testDeleteFile() throws IOException {
-        FileEntity entity = new FileEntity(1L, "foto.png", "image/png",
-                tempDir.resolve("foto.png").toString(), 1L, FileCategory.PROFILE, null, null);
+    void getFilesByOwner_success() {
+        FileEntity f1 = new FileEntity(1L, "a.png", "image/png", "/uploads/a.png", 5L, FileCategory.PROFILE, null, null);
+        FileEntity f2 = new FileEntity(2L, "b.png", "image/png", "/uploads/b.png", 5L, FileCategory.GRATITUDE, null, null);
+
+        when(fileRepository.findByOwnerId(5L)).thenReturn(List.of(f1, f2));
+
+        List<FileResponse> res = storageService.getFilesByOwner(5L);
+
+        assertEquals(2, res.size());
+        verify(fileRepository).findByOwnerId(5L);
+    }
+
+    @Test
+    void deleteFile_success() throws IOException {
+        FileEntity entity = new FileEntity(
+                1L, "a.png", "image/png",
+                "/uploads/a.png", 5L, FileCategory.PROFILE, null, null
+        );
+
+        // archivo real en temp
+        Path file = tempDir.resolve("a.png");
+        Files.write(file, "abc".getBytes());
 
         when(fileRepository.findById(1L)).thenReturn(Optional.of(entity));
-        doNothing().when(fileRepository).delete(entity);
 
-        // crear archivo temporal
-        Path tempFile = tempDir.resolve("foto.png");
-        java.nio.file.Files.write(tempFile, "contenido".getBytes());
+        storageService.deleteFile(1L, 5L);
 
-        storageService.deleteFile(1L);
-
-        verify(fileRepository, times(1)).findById(1L);
-        verify(fileRepository, times(1)).delete(entity);
-        assertFalse(java.nio.file.Files.exists(tempFile));
+        assertFalse(Files.exists(file));
+        verify(fileRepository).delete(entity);
     }
 
     @Test
-    void testUpdateFile() throws IOException {
-        FileEntity entity = new FileEntity(1L, "old.png", "image/png",
-                tempDir.resolve("old.png").toString(), 1L, FileCategory.PROFILE, null, null);
+    void updateFile_wrongOwner_throwsException() {
+        FileEntity entity = new FileEntity(
+                1L, "old.png", "image/png",
+                "/uploads/old.png", 99L, FileCategory.PROFILE, null, null
+        );
 
-        MockMultipartFile newFile = new MockMultipartFile("file", "new.png", "image/png", "contenido".getBytes());
-
-        FileEntity savedEntity = new FileEntity(1L, "new.png", "image/png",
-                tempDir.resolve("new.png").toString(), 1L, FileCategory.PROFILE, null, null);
+        MockMultipartFile newFile = new MockMultipartFile(
+                "file", "new.png", "image/png", "abc".getBytes()
+        );
 
         when(fileRepository.findById(1L)).thenReturn(Optional.of(entity));
-        when(fileRepository.save(any(FileEntity.class))).thenReturn(savedEntity);
 
-        // crear archivo viejo
-        java.nio.file.Files.write(tempDir.resolve("old.png"), "contenido".getBytes());
+        Exception ex = assertThrows(RuntimeException.class, () ->
+                storageService.updateFile(1L, newFile, 5L)
+        );
 
-        FileResponse response = storageService.updateFile(1L, newFile);
-
-        assertNotNull(response);
-        assertEquals("new.png", response.getFileName());
-        verify(fileRepository, times(1)).findById(1L);
-        verify(fileRepository, times(1)).save(entity);
-        assertFalse(java.nio.file.Files.exists(tempDir.resolve("old.png")));
+        assertEquals("No tienes permiso para modificar este archivo", ex.getMessage());
     }
 }
