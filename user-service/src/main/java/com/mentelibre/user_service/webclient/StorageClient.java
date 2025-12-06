@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 import java.util.Map;
 
@@ -18,15 +19,13 @@ public class StorageClient {
         this.webClient = WebClient.builder().baseUrl(baseUrl).build();
     }
 
-    // Subir archivo
-    public Map<String, Object> uploadFile(MultipartFile file, Long ownerId, String category, String token) {
+    // =======================
+    // SUBIR ARCHIVO
+    public Map<String, Object> uploadFile(MultipartFile file, String category, String token) {
         try {
             return webClient.post()
-                    .uri(uriBuilder -> uriBuilder.path("/api/files/upload")
-                            .queryParam("ownerId", ownerId)
-                            .queryParam("category", category)
-                            .build())
-                    .header("Authorization", token)
+                    .uri("/api/v1/storage/upload?category=" + category)
+                    .header("Authorization", "Bearer " + token)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .bodyValue(file.getResource())
                     .retrieve()
@@ -37,12 +36,13 @@ public class StorageClient {
         }
     }
 
-    // Listar archivos de un usuario
-    public List<Map<String, Object>> getFilesByOwner(Long ownerId, String token) {
+    // =======================
+    // LISTAR MIS ARCHIVOS
+    public List<Map<String, Object>> getMyFiles(String token) {
         try {
             return webClient.get()
-                    .uri("/api/files/owner/{ownerId}", ownerId)
-                    .header("Authorization", token)
+                    .uri("/api/v1/storage/me")
+                    .header("Authorization", "Bearer " + token)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
                     .block();
@@ -51,12 +51,13 @@ public class StorageClient {
         }
     }
 
-    // Eliminar archivo
+    // =======================
+    // ELIMINAR
     public boolean deleteFile(Long fileId, String token) {
         try {
             webClient.delete()
-                    .uri("/api/files/{fileId}", fileId)
-                    .header("Authorization", token)
+                    .uri("/api/v1/storage/" + fileId)
+                    .header("Authorization", "Bearer " + token)
                     .retrieve()
                     .bodyToMono(Void.class)
                     .block();
@@ -66,12 +67,13 @@ public class StorageClient {
         }
     }
 
-    // Actualizar archivo
+    // =======================
+    // ACTUALIZAR
     public Map<String, Object> updateFile(Long fileId, MultipartFile file, String token) {
         try {
             return webClient.put()
-                    .uri("/api/files/{fileId}", fileId)
-                    .header("Authorization", token)
+                    .uri("/api/v1/storage/" + fileId)
+                    .header("Authorization", "Bearer " + token)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .bodyValue(file.getResource())
                     .retrieve()

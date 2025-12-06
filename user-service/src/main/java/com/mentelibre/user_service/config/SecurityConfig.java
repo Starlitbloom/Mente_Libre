@@ -3,8 +3,6 @@ package com.mentelibre.user_service.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -12,20 +10,32 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
-    
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception { // Configuración de seguridad HTTP
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         http
-            .csrf(csrf -> csrf.disable()) // Desactiva CSRF para simplificar las pruebas
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/usuario_perfil/perfiles").permitAll() // Permite acceso a Swagger y documentación de la API
-                .anyRequest().authenticated() // Requiere autenticación para cualquier otra solicitud
+                // Swagger público
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui.html"
+                ).permitAll()
+
+                // Todo lo demás requiere token
+                .anyRequest().authenticated()
             )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            .sessionManagement(
+                session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            );
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }

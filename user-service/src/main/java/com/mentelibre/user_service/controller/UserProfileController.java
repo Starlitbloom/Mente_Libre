@@ -1,174 +1,129 @@
 package com.mentelibre.user_service.controller;
 
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import com.mentelibre.user_service.dto.UserProfileDTO;
-import com.mentelibre.user_service.model.UserProfile;
+import com.mentelibre.user_service.dto.CreateUserProfileRequestDto;
+import com.mentelibre.user_service.dto.UpdateUserProfileRequestDto;
+import com.mentelibre.user_service.dto.UserProfileResponseDto;
 import com.mentelibre.user_service.service.UserProfileService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import org.springframework.web.bind.annotation.*;
+
 @RestController
-@RequestMapping("/api/v1/usuario_perfil")
+@RequestMapping("/api/v1/user-profile")
 public class UserProfileController {
 
     @Autowired
     private UserProfileService userProfileService;
 
-    // Obtener todos los perfiles con Auth
-    @Operation(summary = "Obtener todos los perfiles", description = "Retorna todos los perfiles de usuario registrados con datos de AuthService.")
-    @ApiResponse(responseCode = "200", description = "Perfiles encontrados", content = @Content(schema = @Schema(implementation = UserProfileDTO.class)))
-    @ApiResponse(responseCode = "204", description = "No hay perfiles disponibles")
-    //@PreAuthorize("hasRole('ADMINISTRADOR')")
-    @GetMapping("/perfiles")
-    public ResponseEntity<List<UserProfileDTO>> getPerfiles() {
-        List<UserProfileDTO> perfiles = userProfileService.obtenerTodosConAuthData();
-        if (perfiles.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(perfiles);
-    }
-
-    // Obtener perfil por ID de UserProfile (sin Auth)
-    @Operation(summary = "Obtener perfil por ID", description = "Devuelve un perfil si el ID existe.")
-    @ApiResponse(responseCode = "200", description = "Perfil encontrado", content = @Content(schema = @Schema(implementation = UserProfile.class)))
-    @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'CLIENTE')")
-    @GetMapping("/perfiles/{id}")
-    public ResponseEntity<?> obtenerUserProfilePorId(@PathVariable Long id) {
-        try {
-            UserProfile userProfile = userProfileService.obtenerPerfilPorId(id);
-
-            // Usuario autenticado
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String userIdStr = auth.getName(); // si en el token guardas el userId
-            Long userId = Long.parseLong(userIdStr);
-
-            // Solo el dueño o el administrador pueden acceder
-            boolean esAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRADOR"));
-
-            if (!userProfile.getUserId().equals(userId) && !esAdmin) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body("No puedes acceder a este perfil");
+    // ======================================================
+    // CREAR PERFIL
+    @Operation(
+            summary = "Crear perfil",
+            description = "Crea un perfil para el usuario autenticado.",
+            responses = {
+                @ApiResponse(responseCode = "201",
+                    description = "Perfil creado correctamente",
+                    content = @Content(schema = @Schema(implementation = UserProfileResponseDto.class))
+                ),
+                @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                @ApiResponse(responseCode = "409", description = "El usuario ya tiene un perfil creado")
             }
+    )
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody CreateUserProfileRequestDto dto) {
 
-            return ResponseEntity.ok(userProfile);
+        try {
+            UserProfileResponseDto response = userProfileService.crearPerfil(dto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // ======================================================
+    // OBTENER MI PERFIL
+    @Operation(
+            summary = "Obtener mi perfil",
+            description = "Devuelve el perfil del usuario autenticado.",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Perfil obtenido correctamente"),
+                @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
+            }
+    )
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @GetMapping("/me")
+    public ResponseEntity<?> getMyProfile() {
+
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        try {
+            UserProfileResponseDto perfil = userProfileService.obtenerPerfilPorUserId(userId);
+            return ResponseEntity.ok(perfil);
+
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 
-    // Obtener perfil por userId (con Auth)
-    @Operation(summary = "Obtener perfil por ID de usuario", description = "Devuelve el perfil asociado al userId con datos de AuthService si existe.")
-    @ApiResponse(responseCode = "200", description = "Perfil encontrado", content = @Content(schema = @Schema(implementation = UserProfileDTO.class)))
-    @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'CLIENTE')")
-    @GetMapping("/perfiles/user/{userId}")
-    public ResponseEntity<?> obtenerPorUserId(@PathVariable Long userId) {
-        try {
-            UserProfileDTO dto = userProfileService.obtenerPerfilCompleto(userId);
-            return ResponseEntity.ok(dto);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
-    }
+    // ======================================================
+    // ACTUALIZAR MI PERFIL
+    @Operation(
+            summary = "Actualizar mi perfil",
+            description = "Actualiza los datos del perfil del usuario autenticado.",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Perfil actualizado correctamente"),
+                @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
+            }
+    )
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @PutMapping("/me")
+    public ResponseEntity<?> update(
+            @RequestBody UpdateUserProfileRequestDto dto) {
 
-    // Buscar perfiles por género (solo local)
-    @Operation(summary = "Buscar perfiles por género", description = "Retorna perfiles según el género.")
-    @ApiResponse(responseCode = "200", description = "Perfiles encontrados")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @GetMapping("/perfiles/genero/{generoId}")
-    public ResponseEntity<?> buscarPorGenero(@PathVariable Long generoId) {
-        return ResponseEntity.ok(userProfileService.buscarPorGenero(generoId));
-    }
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-    // Crear perfil
-    @Operation(summary = "Crear nuevo perfil", description = "Crea un nuevo perfil de usuario.")
-    @ApiResponse(responseCode = "201", description = "Perfil creado exitosamente", content = @Content(schema = @Schema(implementation = UserProfile.class)))
-    @ApiResponse(responseCode = "400", description = "Datos inválidos")
-    //@PreAuthorize("hasRole('CLIENTE')")
-    @PostMapping("/perfiles")
-    public ResponseEntity<?> crearUserProfile(@RequestBody UserProfile userProfile) {
         try {
-            UserProfile nuevo = userProfileService.crearPerfil(userProfile);
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
+            UserProfileResponseDto updated = userProfileService.actualizarPerfil(userId, dto);
+            return ResponseEntity.ok(updated);
+
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
-    // Actualizar perfil
-    @Operation(summary = "Actualizar perfil", description = "Actualiza los datos de un perfil de usuario.")
-    @ApiResponse(responseCode = "200", description = "Perfil actualizado exitosamente", content = @Content(schema = @Schema(implementation = UserProfile.class)))
-    @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
-    //@PreAuthorize("hasAnyRole('CLIENTE', 'ADMINISTRADOR')")
-    @PutMapping("/perfiles/{id}")
-    public ResponseEntity<?> actualizarUserProfile(@PathVariable Long id, @RequestBody UserProfile userProfile) {
-        try {
-            UserProfile actualizado = userProfileService.actualizarUserProfile(id, userProfile);
-            return ResponseEntity.ok(actualizado);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
-    }
+    // ======================================================
+    // ELIMINAR MI PERFIL
+    @Operation(
+            summary = "Eliminar mi perfil",
+            description = "Elimina completamente el perfil del usuario autenticado.",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Perfil eliminado correctamente"),
+                @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
+            }
+    )
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @DeleteMapping("/me")
+    public ResponseEntity<?> delete() {
 
-    // Eliminar perfil
-    @Operation(summary = "Eliminar perfil", description = "Elimina un perfil de usuario por ID.")
-    @ApiResponse(responseCode = "200", description = "Perfil eliminado correctamente")
-    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @DeleteMapping("/perfiles/{id}")
-    public ResponseEntity<?> eliminarPerfil(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(userProfileService.eliminarUserProfile(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
-    }
-
-    // -------------------- ARCHIVOS --------------------
-
-    // Subir archivo
-    @PostMapping("/perfiles/{userId}/files/upload")
-    @PreAuthorize("hasRole('CLIENTE')")
-    public ResponseEntity<?> uploadFile(
-            @PathVariable Long userId,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("category") String category,
-            @RequestHeader("Authorization") String token) {
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         try {
-            Map<String, Object> uploadedFile = userProfileService.uploadUserFile(file, userId, category, token);
-            return ResponseEntity.ok(uploadedFile);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
+            String msg = userProfileService.eliminarPerfil(userId);
+            return ResponseEntity.ok(msg);
 
-    // Listar archivos
-    @GetMapping("/perfiles/{userId}/files")
-    @PreAuthorize("hasAnyRole('CLIENTE', 'ADMINISTRADOR')")
-    public ResponseEntity<?> listFiles(
-            @PathVariable Long userId,
-            @RequestHeader("Authorization") String token) {
-
-        try {
-            List<Map<String, Object>> files = userProfileService.getUserFiles(userId, token);
-            return ResponseEntity.ok(files);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }

@@ -37,9 +37,11 @@ public class UserProfile {
     @Schema(description = "ID del usuario asociado", example = "1")
     private Long userId;
 
-
     @Size(max = 255, message = "La URL de la foto no puede exceder los 255 caracteres")
-    @Pattern(regexp = "^(https?|ftp)://[^\s/$.?#].[^\s]*$", message = "La URL de la foto debe ser válida") // Validación para URL de foto de perfil
+    @Pattern(
+        regexp = "^(https?|ftp)://.*$",
+        message = "La URL de la foto debe comenzar con http, https o ftp"
+    )// Validación para URL de foto de perfil
     @Schema(description = "URL de la foto de perfil", example = "https://example.com/foto.jpg")
     private String fotoPerfil;
 
@@ -63,4 +65,25 @@ public class UserProfile {
     @NotNull(message = "El género es obligatorio")
     @Schema(description = "Género del usuario", example = "FEMENINO")
     private Genero genero;
+
+    @Size(max = 100, message = "El objetivo no puede exceder los 100 caracteres.")
+    @Schema(
+        description = "Objetivo de salud diario seleccionado por el usuario",
+        example = "Reducir estrés y organizar prioridades"
+    )
+    private String objetivo;
+
+    @Size(max = 50, message = "El tema no puede exceder los 50 caracteres.")
+    @Schema(
+        description = "Tema visual de la aplicación elegido por el usuario",
+        example = "Rosado"
+    )
+    private String tema;
+
+    @NotNull(message = "Debe indicar si la huella está activada o no.")
+    @Schema(
+        description = "Define si el usuario activó el inicio de sesión por huella",
+        example = "true"
+    )
+    private Boolean huellaActiva;
 }
