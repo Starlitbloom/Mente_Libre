@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.mentelibre.user_service.config.AuthValidationResponse;
 import com.mentelibre.user_service.dto.AuthUserDTO;
 
 @Component
@@ -16,12 +17,12 @@ public class AuthClient {
     }
 
     // Valida token y obtiene userId (lo que usa JwtRequestFilter)
-    public Long validateToken(String token) {
+    public AuthValidationResponse validateToken(String token) {
         return webClient.get()
                 .uri("/auth/validate")
                 .header("Authorization", "Bearer " + token)
                 .retrieve()
-                .bodyToMono(Long.class)
+                .bodyToMono(AuthValidationResponse.class)
                 .block();
     }
 
@@ -34,4 +35,5 @@ public class AuthClient {
                 .bodyToMono(AuthUserDTO.class)
                 .block();
     }
+
 }

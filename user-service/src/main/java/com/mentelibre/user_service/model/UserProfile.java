@@ -11,10 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -38,21 +36,16 @@ public class UserProfile {
     private Long userId;
 
     @Size(max = 255, message = "La URL de la foto no puede exceder los 255 caracteres")
-    @Pattern(
-        regexp = "^(https?|ftp)://.*$",
-        message = "La URL de la foto debe comenzar con http, https o ftp"
-    )// Validación para URL de foto de perfil
+    @Column(name = "foto_perfil")
     @Schema(description = "URL de la foto de perfil", example = "https://example.com/foto.jpg")
     private String fotoPerfil;
 
-    @Past(message = "La fecha de nacimiento debe ser una fecha pasada") // Validación para que la fecha de nacimiento sea en el pasado
-    @NotNull(message = "La fecha de nacimiento no puede estar vacía")
+    @Past(message = "La fecha debe ser pasada") // Validación para que la fecha de nacimiento sea en el pasado
     @Schema(description = "Fecha de nacimiento del usuario", example = "2006-01-15")
     private LocalDate fechaNacimiento; // Fecha de nacimiento del usuario, debe ser una fecha pasada
 
-    @Column(nullable = false, length = 50) // Longitud máxima de la dirección
+    @Column(length = 50) // Longitud máxima de la dirección
     @Size(max = 50, message = "La dirección no puede exceder los 50 caracteres")
-    @NotBlank(message = "La dirección no puede estar vacía") // Validación para que la dirección no esté vacía
     @Schema(description = "Dirección del usuario", example = "Volcan Villarrica 429")
     private String direccion; // Dirección del usuario
 

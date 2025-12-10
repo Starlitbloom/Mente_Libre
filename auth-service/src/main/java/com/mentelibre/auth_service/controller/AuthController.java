@@ -344,6 +344,7 @@ public class AuthController {
             response.put("userId", user.getId());
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
+            response.put("phone", user.getPhone());
             response.put("role", user.getRol().getNombre());
 
             return ResponseEntity.ok(response);
@@ -492,10 +493,14 @@ public class AuthController {
 
             String token = authHeader.substring(7);
 
-            String email = jwtUtil.extractUsername(token);   // recupera email del token
+            String email = jwtUtil.extractUsername(token);   
             User user = userService.obtenerUserPorEmail(email);
 
-            return ResponseEntity.ok(user.getId()); // Storage necesita SOLO el userId
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("userId", user.getId());
+            resp.put("rol", user.getRol().getNombre());  // EJ: "ROLE_USER"
+
+            return ResponseEntity.ok(resp);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido");

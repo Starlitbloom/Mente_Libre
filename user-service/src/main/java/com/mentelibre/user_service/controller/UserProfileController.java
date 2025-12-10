@@ -1,6 +1,7 @@
 package com.mentelibre.user_service.controller;
 
 import com.mentelibre.user_service.dto.CreateUserProfileRequestDto;
+import com.mentelibre.user_service.dto.UpdateFotoPerfilDto;
 import com.mentelibre.user_service.dto.UpdateUserProfileRequestDto;
 import com.mentelibre.user_service.dto.UserProfileResponseDto;
 import com.mentelibre.user_service.service.UserProfileService;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -44,11 +46,25 @@ public class UserProfileController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody CreateUserProfileRequestDto dto) {
 
+        System.out.println("🟦 [CONTROLLER] Entró al endpoint POST /user-profile");
+
+        // LOG DE AUTENTICACIÓN
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("🟦 Authentication = " + auth);
+        if (auth != null) {
+            System.out.println("🟦 Principal = " + auth.getPrincipal());
+            System.out.println("🟦 Authorities = " + auth.getAuthorities());
+        } else {
+            System.out.println("❌ Authentication ES NULL");
+        }
+
         try {
             UserProfileResponseDto response = userProfileService.crearPerfil(dto);
+            System.out.println("🟩 Perfil creado exitosamente");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
         } catch (RuntimeException e) {
+            System.out.println("❌ Error al crear perfil: " + e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -67,7 +83,13 @@ public class UserProfileController {
     @GetMapping("/me")
     public ResponseEntity<?> getMyProfile() {
 
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        System.out.println("🟦 [CONTROLLER] Entró al endpoint GET /user-profile/me");
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("🟦 Authentication = " + auth);
+
+        Long userId = (Long) auth.getPrincipal();
+        System.out.println("🟦 userId obtenido = " + userId);
 
         try {
             UserProfileResponseDto perfil = userProfileService.obtenerPerfilPorUserId(userId);
@@ -90,10 +112,15 @@ public class UserProfileController {
     )
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PutMapping("/me")
-    public ResponseEntity<?> update(
-            @RequestBody UpdateUserProfileRequestDto dto) {
+    public ResponseEntity<?> update(@RequestBody UpdateUserProfileRequestDto dto) {
 
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        System.out.println("🟦 [CONTROLLER] Entró al endpoint PUT /user-profile/me");
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("🟦 Authentication = " + auth);
+
+        Long userId = (Long) auth.getPrincipal();
+        System.out.println("🟦 userId obtenido = " + userId);
 
         try {
             UserProfileResponseDto updated = userProfileService.actualizarPerfil(userId, dto);
@@ -118,7 +145,13 @@ public class UserProfileController {
     @DeleteMapping("/me")
     public ResponseEntity<?> delete() {
 
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        System.out.println("🟦 [CONTROLLER] Entró al endpoint DELETE /user-profile/me");
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("🟦 Authentication = " + auth);
+
+        Long userId = (Long) auth.getPrincipal();
+        System.out.println("🟦 userId obtenido = " + userId);
 
         try {
             String msg = userProfileService.eliminarPerfil(userId);
@@ -128,4 +161,21 @@ public class UserProfileController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
+
+    @PutMapping("/me/foto")
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public ResponseEntity<?> actualizarFoto(
+            @RequestBody @Valid UpdateFotoPerfilDto dto) {
+
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        try {
+            UserProfileResponseDto perfil = userProfileService.actualizarSoloFoto(userId, dto.getFotoPerfil());
+            return ResponseEntity.ok(perfil);
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }

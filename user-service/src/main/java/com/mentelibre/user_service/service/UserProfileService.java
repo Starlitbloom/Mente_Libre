@@ -128,4 +128,21 @@ public class UserProfileService {
 
         return dto;
     }
+
+    public UserProfileResponseDto actualizarSoloFoto(Long userId, String nuevaFoto) {
+
+        UserProfile perfil = profileRepository.findByUserId(userId)
+            .orElseThrow(() -> new RuntimeException("El perfil no existe"));
+
+        // Validación estricta para actualización
+        if (!nuevaFoto.startsWith("http")) {
+            throw new RuntimeException("La URL de la foto no es válida");
+        }
+
+        perfil.setFotoPerfil(nuevaFoto);
+        profileRepository.save(perfil);
+
+        return mapToResponse(perfil);
+    }
+
 }
