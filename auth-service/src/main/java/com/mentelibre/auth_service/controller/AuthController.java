@@ -11,7 +11,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -331,13 +330,13 @@ public class AuthController {
 
         try {
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
+                    new UsernamePasswordAuthenticationToken(email, password)
             );
 
-            UserDetails userDetails = userService.loadUserByUsername(email);
-            String jwt = jwtUtil.generateToken(userDetails);
-
             User user = userService.obtenerUserPorEmail(email);
+
+            // Generar token usando User
+            String jwt = jwtUtil.generateToken(user);
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", jwt);
@@ -377,8 +376,8 @@ public class AuthController {
     @GetMapping("/auth/me")
     public ResponseEntity<?> getMe() {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userService.obtenerUserPorEmail(email);
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userService.obtenerUserPorId(userId);
 
         UserResponseDTO response = new UserResponseDTO();
         response.setId(user.getId());
@@ -411,17 +410,15 @@ public class AuthController {
     @PutMapping("/auth/me")
     public ResponseEntity<?> updateMe(@RequestBody UpdateUserDTO dto) {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userService.obtenerUserPorEmail(email);
-
-        User actualizado = userService.actualizarUser(user.getId(), dto);
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userService.actualizarUser(userId, dto);
 
         UserResponseDTO response = new UserResponseDTO();
-        response.setId(actualizado.getId());
-        response.setUsername(actualizado.getUsername());
-        response.setEmail(actualizado.getEmail());
-        response.setPhone(actualizado.getPhone());
-        response.setRol(actualizado.getRol().getNombre());
+        response.setId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setPhone(user.getPhone());
+        response.setRol(user.getRol().getNombre());
 
         return ResponseEntity.ok(response);
     }
@@ -447,10 +444,8 @@ public class AuthController {
     @DeleteMapping("/auth/me")
     public ResponseEntity<?> deleteMe() {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userService.obtenerUserPorEmail(email);
-
-        return ResponseEntity.ok(userService.eliminarUser(user.getId()));
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return ResponseEntity.ok(userService.eliminarUser(userId));
     }
 
     @Operation(summary = "Cambiar contraseña", description = "Permite al usuario autenticado modificar su contraseña.")
@@ -462,15 +457,9 @@ public class AuthController {
     @PutMapping("/auth/me/password")
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordDTO dto) {
 
-        if (dto.getOldPassword() == null || dto.getNewPassword() == null) {
-            return ResponseEntity.badRequest().body("Debe ingresar las contraseñas.");
-        }
-
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userService.obtenerUserPorEmail(email);
-
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         try {
-            String mensaje = userService.cambiarPassword(user.getId(), dto.getOldPassword(), dto.getNewPassword());
+            String mensaje = userService.cambiarPassword(userId, dto.getOldPassword(), dto.getNewPassword());
             return ResponseEntity.ok(mensaje);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -493,12 +482,18 @@ public class AuthController {
 
             String token = authHeader.substring(7);
 
-            String email = jwtUtil.extractUsername(token);   
-            User user = userService.obtenerUserPorEmail(email);
+            // Obtener el ID desde el "sub"
+            Long userId = Long.valueOf(jwtUtil.extractUserId(token));
+
+            // Obtener el rol desde los claims
+            String role = jwtUtil.extractRole(token);
+
+            String email = jwtUtil.extractEmail(token);
 
             Map<String, Object> resp = new HashMap<>();
-            resp.put("userId", user.getId());
-            resp.put("rol", user.getRol().getNombre());  // EJ: "ROLE_USER"
+            resp.put("userId", userId);
+            resp.put("rol", role);
+            resp.put("email", email);
 
             return ResponseEntity.ok(resp);
 
@@ -506,5 +501,4 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido");
         }
     }
-
 }

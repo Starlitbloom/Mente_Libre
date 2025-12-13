@@ -1,14 +1,14 @@
-package com.mentelibre.user_service.config;
+package com.mentelibre.virtualpet_service.config;
 
-import com.mentelibre.user_service.webclient.AuthClient;
+import com.mentelibre.virtualpet_service.webclient.AuthClient;
+import com.mentelibre.virtualpet_service.dto.AuthValidationResponse;
+
 import jakarta.servlet.FilterChain;
-import java.util.List;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
@@ -24,20 +25,19 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     private AuthClient authClient;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                   HttpServletResponse response,
-                                   FilterChain chain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain chain
+    ) throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");
 
-        System.out.println("[USER-SERVICE] JwtRequestFilter ejecutándose...");
-        System.out.println("Path = " + request.getRequestURI());
-        System.out.println("Method = " + request.getMethod());
-        System.out.println("Authorization recibido = " + header);
+        System.out.println("[PET-SERVICE] Ejecutando JwtRequestFilter...");
+        System.out.println("PATH = " + request.getRequestURI());
 
         if (header == null || !header.startsWith("Bearer ")) {
-            System.out.println("No se envió token. Bloqueando acceso.");
+            System.out.println("No hay token en cabecera.");
             chain.doFilter(request, response);
             return;
         }
@@ -50,12 +50,9 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             Long userId = data.getUserId();
             String role = data.getRol();
 
-            System.out.println("Token válido");
-            System.out.println("userId = " + userId);
-            System.out.println("rol = " + role);
+            System.out.println("Token válido. userId = " + userId + " rol = " + role);
 
-            List<GrantedAuthority> authorities =
-                    List.of(new SimpleGrantedAuthority(role));
+            var authorities = List.of(new SimpleGrantedAuthority(role));
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, authorities);
@@ -67,7 +64,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
         } catch (Exception e) {
-            System.out.println("ERROR VALIDANDO TOKEN EN USER-SERVICE");
+            System.out.println("[PET-SERVICE] ERROR VALIDANDO TOKEN");
             e.printStackTrace();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;

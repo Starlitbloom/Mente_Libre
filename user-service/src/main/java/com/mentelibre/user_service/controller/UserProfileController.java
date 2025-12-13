@@ -46,25 +46,25 @@ public class UserProfileController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody CreateUserProfileRequestDto dto) {
 
-        System.out.println("🟦 [CONTROLLER] Entró al endpoint POST /user-profile");
+        System.out.println("[CONTROLLER] Entró al endpoint POST /user-profile");
 
         // LOG DE AUTENTICACIÓN
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("🟦 Authentication = " + auth);
+        System.out.println("Authentication = " + auth);
         if (auth != null) {
-            System.out.println("🟦 Principal = " + auth.getPrincipal());
-            System.out.println("🟦 Authorities = " + auth.getAuthorities());
+            System.out.println("Principal = " + auth.getPrincipal());
+            System.out.println("Authorities = " + auth.getAuthorities());
         } else {
-            System.out.println("❌ Authentication ES NULL");
+            System.out.println("Authentication ES NULL");
         }
 
         try {
             UserProfileResponseDto response = userProfileService.crearPerfil(dto);
-            System.out.println("🟩 Perfil creado exitosamente");
+            System.out.println("Perfil creado exitosamente");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
         } catch (RuntimeException e) {
-            System.out.println("❌ Error al crear perfil: " + e.getMessage());
+            System.out.println("Error al crear perfil: " + e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -83,13 +83,13 @@ public class UserProfileController {
     @GetMapping("/me")
     public ResponseEntity<?> getMyProfile() {
 
-        System.out.println("🟦 [CONTROLLER] Entró al endpoint GET /user-profile/me");
+        System.out.println("[CONTROLLER] Entró al endpoint GET /user-profile/me");
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("🟦 Authentication = " + auth);
+        System.out.println("Authentication = " + auth);
 
         Long userId = (Long) auth.getPrincipal();
-        System.out.println("🟦 userId obtenido = " + userId);
+        System.out.println("userId obtenido = " + userId);
 
         try {
             UserProfileResponseDto perfil = userProfileService.obtenerPerfilPorUserId(userId);
@@ -114,13 +114,13 @@ public class UserProfileController {
     @PutMapping("/me")
     public ResponseEntity<?> update(@RequestBody UpdateUserProfileRequestDto dto) {
 
-        System.out.println("🟦 [CONTROLLER] Entró al endpoint PUT /user-profile/me");
+        System.out.println("[CONTROLLER] Entró al endpoint PUT /user-profile/me");
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("🟦 Authentication = " + auth);
+        System.out.println("Authentication = " + auth);
 
         Long userId = (Long) auth.getPrincipal();
-        System.out.println("🟦 userId obtenido = " + userId);
+        System.out.println("userId obtenido = " + userId);
 
         try {
             UserProfileResponseDto updated = userProfileService.actualizarPerfil(userId, dto);
@@ -145,13 +145,13 @@ public class UserProfileController {
     @DeleteMapping("/me")
     public ResponseEntity<?> delete() {
 
-        System.out.println("🟦 [CONTROLLER] Entró al endpoint DELETE /user-profile/me");
+        System.out.println("[CONTROLLER] Entró al endpoint DELETE /user-profile/me");
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("🟦 Authentication = " + auth);
+        System.out.println("Authentication = " + auth);
 
         Long userId = (Long) auth.getPrincipal();
-        System.out.println("🟦 userId obtenido = " + userId);
+        System.out.println("userId obtenido = " + userId);
 
         try {
             String msg = userProfileService.eliminarPerfil(userId);

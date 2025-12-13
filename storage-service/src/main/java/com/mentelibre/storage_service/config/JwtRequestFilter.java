@@ -48,6 +48,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (Exception e) {
+            e.printStackTrace(); // <-- imprime el error real
+            System.out.println("ERROR VALIDANDO TOKEN: " + e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
