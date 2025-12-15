@@ -26,7 +26,8 @@ public class SecurityConfig {
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/swagger-ui.html"
-                ).permitAll()               // Swagger accesible sin token
+                ).permitAll()        
+                .requestMatchers("/api/moods/register").permitAll()       // Swagger accesible sin token
                 .anyRequest().authenticated() // Todo lo demás requiere JWT
             )
             .sessionManagement(sess ->

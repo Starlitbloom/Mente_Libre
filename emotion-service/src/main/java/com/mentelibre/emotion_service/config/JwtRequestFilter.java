@@ -5,14 +5,19 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.mentelibre.emotion_service.dto.AuthValidationResponse;
+import com.mentelibre.emotion_service.webclient.AuthClient;
+
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 /**
  * Filtro que:
@@ -23,61 +28,42 @@ import java.util.Collections;
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
-
-    public JwtRequestFilter() {
-        // Como JwtUtil no es @Component, lo instanciamos manualmente.
-        this.jwtUtil = new JwtUtil();
-    }
+    @Autowired
+    private AuthClient authClient;
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                   HttpServletResponse response,
+                                   FilterChain chain)
+            throws IOException, ServletException {
 
-        final String authHeader = request.getHeader("Authorization");
-        String jwt = null;
-        String username = null;
+        String header = request.getHeader("Authorization");
 
-        // Header debe ser: "Bearer <token>"
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            jwt = authHeader.substring(7);
-
-            if (jwtUtil.validateToken(jwt)) {
-                username = jwtUtil.extractUsername(jwt);
-            }
+        if (header == null || !header.startsWith("Bearer ")) {
+            chain.doFilter(request, response);
+            return;
         }
 
-        // Si el token es válido y aún no hay autenticación en el contexto:
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        try {
+            AuthValidationResponse data = authClient.validateToken(header);
 
-            // Aquí no buscamos en BD, solo creamos un Authentication sencillo
-            UsernamePasswordAuthenticationToken authToken =
+            Long userId = data.getUserId();
+            String role = data.getRol();
+
+            UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(
-                            username,           // principal
-                            null,               // credenciales
-                            Collections.emptyList() // sin roles (puedes agregar roles si usas claims)
+                            userId, null,
+                            List.of(new SimpleGrantedAuthority(role))
                     );
 
-            authToken.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(auth);
 
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
 
-        filterChain.doFilter(request, response);
-    }
-
-    /**
-     * Excluye Swagger de este filtro para que puedas ver la doc sin token.
-     */
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.startsWith("/swagger-ui")
-                || path.startsWith("/v3/api-docs");
+        chain.doFilter(request, response);
     }
 }

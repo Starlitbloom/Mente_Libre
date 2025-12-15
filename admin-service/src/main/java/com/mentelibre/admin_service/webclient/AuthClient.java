@@ -1,29 +1,29 @@
-package com.mentelibre.virtualpet_service.webclient;
+package com.mentelibre.admin_service.webclient;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.mentelibre.virtualpet_service.dto.UserProfileResponseDto;
+import com.mentelibre.admin_service.dto.JwtValidationResponse;
 
 @Component
-public class UserClient {
+public class AuthClient {
 
     private final WebClient webClient;
 
-    public UserClient(@Value("${user.service.url}") String baseUrl) {
+    public AuthClient(@Value("${auth.service.url}") String baseUrl) {
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
                 .build();
     }
 
-    // Obtener el perfil del usuario (requiere TOKEN)
-    public UserProfileResponseDto getMyProfile(String token) {
+    public JwtValidationResponse validateToken(String token) {
+
         return webClient.get()
-                .uri("/user-profile/me")
+                .uri("/api/v1/auth/validate")
                 .header("Authorization", token)
                 .retrieve()
-                .bodyToMono(UserProfileResponseDto.class)
+                .bodyToMono(JwtValidationResponse.class)
                 .block();
     }
 }

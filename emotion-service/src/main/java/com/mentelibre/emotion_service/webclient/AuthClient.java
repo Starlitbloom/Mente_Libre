@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.mentelibre.emotion_service.dto.AuthValidationResponse;
+
 @Component
 public class AuthClient {
 
@@ -15,17 +17,14 @@ public class AuthClient {
                 .build();
     }
 
-    // 🔹 Verifica si el usuario existe llamando al Auth Service
-    public boolean existeUsuario(Long userId) {
-        try {
-            webClient.get()
-                    .uri("/users/{id}", userId)
-                    .retrieve()
-                    .bodyToMono(Void.class)
-                    .block();
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+    // Valida el token enviándolo al Auth Service
+    public AuthValidationResponse validateToken(String token) {
+
+        return webClient.get()
+                .uri("/auth/validate")
+                .header("Authorization", token)  // debe ir "Bearer ...."
+                .retrieve()
+                .bodyToMono(AuthValidationResponse.class)
+                .block();   // síncrono para usar dentro del filtro
     }
 }

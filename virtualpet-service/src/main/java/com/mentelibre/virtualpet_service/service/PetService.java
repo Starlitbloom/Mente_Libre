@@ -41,7 +41,12 @@ public class PetService {
 
         Pet saved = petRepository.save(pet);
 
-        return mapToDto(saved);
+        saved.setPoints(25);
+        saved.setExperience(25);
+        saved.setAffinity(saved.getAffinity() + 5); // sube afinidad
+        Pet updated = petRepository.save(saved);
+
+        return mapToDto(updated);
     }
 
     // ============================================================

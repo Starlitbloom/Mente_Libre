@@ -64,7 +64,7 @@ public class JwtUtil {
     }
 
 
-    // 🔥 NUEVO: generar token desde User (no UserDetails)
+    //  NUEVO: generar token desde User (no UserDetails)
     public String generateToken(User user) {
 
         Map<String, Object> claims = new HashMap<>();
@@ -78,7 +78,7 @@ public class JwtUtil {
     private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(subject)       // 🔥 userId como String
+                .setSubject(subject)       //  userId como String
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes()), SignatureAlgorithm.HS256)

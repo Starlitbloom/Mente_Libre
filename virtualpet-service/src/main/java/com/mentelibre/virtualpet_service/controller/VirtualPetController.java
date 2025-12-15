@@ -48,16 +48,15 @@ public class VirtualPetController {
 
         try {
             // Obtener el perfil del usuario con el UserClient
-            UserProfileResponseDto userProfile = userClient.getMyProfile(token);
+            UserProfileResponseDto userProfile = userClient.getMyProfile("Bearer " + token);
 
             // Crear la mascota
             PetDto response = petService.createPet(userId, dto);
 
-            // Aquí puedes realizar más acciones con los datos del perfil, como guardar preferencias
-            // Ejemplo: Añadir el nombre del usuario o sus preferencias a la mascota
-            response.setName(userProfile.getObjetivo() + " - " + userProfile.getGenero().getNombre());
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            // Sin modificar el nombre
+            return ResponseEntity.ok(response);
+
 
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

@@ -55,7 +55,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             var authorities = List.of(new SimpleGrantedAuthority(role));
 
             UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                new UsernamePasswordAuthenticationToken(userId, token, authorities);
+
 
             authentication.setDetails(
                 new WebAuthenticationDetailsSource().buildDetails(request)

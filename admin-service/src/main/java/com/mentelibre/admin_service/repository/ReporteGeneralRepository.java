@@ -13,5 +13,4 @@ public interface ReporteGeneralRepository extends JpaRepository<ReporteGeneral, 
     // Ejemplo de método para filtrar reportes por rango de fechas
     List<ReporteGeneral> findByCreadoEnBetween(LocalDateTime inicio, LocalDateTime fin);
 
-    // Puedes agregar más métodos personalizados según necesites estadísticas históricas
 }
